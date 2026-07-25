@@ -30,7 +30,7 @@ public class MediaController {
     public ResponseEntity<APIResponse<UUIDResponse>> compress(
             @RequestParam("file")MultipartFile file,
             @Valid @ModelAttribute ClipOptions options
-            ) throws IOException, InterruptedException {
+            ) throws IOException {
         Job job = mediaService.compress(file, options);
         return ResponseEntity.ok(new APIResponse<>(
                 SUCCESS,

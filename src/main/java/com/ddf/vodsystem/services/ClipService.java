@@ -156,6 +156,10 @@ public class ClipService {
             throw new ClipNotFound("Clip file not found");
         }
 
+        if (!Files.isReadable(file)) {
+            throw new ClipMediaUnavailable(id, "Clip file is not readable");
+        }
+
         return new FileSystemResource(file);
     }
 

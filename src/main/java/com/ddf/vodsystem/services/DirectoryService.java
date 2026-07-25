@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 import java.nio.file.StandardCopyOption;
 
@@ -129,11 +130,29 @@ public class DirectoryService {
         }
     }
 
+    private void checkDirPermissions() {
+        List<Path> dirs = List.of(
+                Path.of(tempInputsDir),
+                Path.of(tempOutputsDir),
+                Path.of(usersDir)
+        );
+
+        List<Path> bad = dirs.stream()
+                .filter(p -> !Files.isDirectory(p) || !Files.isReadable(p) || !Files.isWritable(p))
+                .toList();
+
+        if (!bad.isEmpty()) {
+            throw new IllegalStateException("Unusable directories: " + bad);
+        }
+    }
+
     @PostConstruct
     public void createDirectoriesIfNotExist() throws IOException {
         Files.createDirectories(Path.of(tempInputsDir));
         Files.createDirectories(Path.of(tempOutputsDir));
         Files.createDirectories(Path.of(usersDir));
+
+        checkDirPermissions();
     }
 
     @Scheduled(fixedRate = TEMP_DIR_CLEANUP_RATE)

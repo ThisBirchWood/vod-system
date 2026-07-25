@@ -12,6 +12,7 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -77,8 +78,8 @@ public class ClipController {
         );
     }
 
-    @GetMapping("/{id}/media")
-    public ResponseEntity<Resource> downloadClip(@PathVariable Long id) {
+    @GetMapping(value = "/{id}/media", produces = MediaType.ALL_VALUE)
+    public ResponseEntity<Resource> downloadClip(@PathVariable Long id) throws IOException {
         Resource resource = clipService.downloadClip(id);
 
         if (resource == null || !resource.exists()) {
@@ -86,8 +87,11 @@ public class ClipController {
         }
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, String.format(FILENAME_HEADER, resource.getFilename()))
-                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        String.format(FILENAME_HEADER, resource.getFilename()))
+                .contentType(MediaTypeFactory.getMediaType(resource)
+                        .orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .contentLength(resource.contentLength())
                 .body(resource);
     }
 

@@ -25,16 +25,10 @@ const getClipById = async (id: string): Promise<Clip | null> => {
     return result.data;
 };
 
-const getVideoBlob = async (id: string): Promise<Blob> => {
-    const response = await fetch(API_URL + `/api/v1/clips/${id}/media`, { credentials: 'include' });
-
-    if (!response.ok) {
-        if (response.status === 401 || response.status === 403) throw new AuthError();
-        throw new Error(`Failed to fetch video ${id}: ${response.status}`);
-    }
-
-    return response.blob();
-};
+// URL for the raw media stream. The <video> element loads this directly so the
+// browser can issue HTTP Range requests (progressive loading + seeking) instead
+// of downloading the whole file up front.
+const getClipMediaUrl = (id: string): string => API_URL + `/api/v1/clips/${id}/media`;
 
 const patchClip = async (id: number, data: { title?: string; description?: string }): Promise<Clip> => {
     const response = await fetch(API_URL + `/api/v1/clips/${id}`, {
@@ -64,4 +58,4 @@ const deleteClip = async (id: number): Promise<void> => {
     if (result.status === 'error') throw new Error(`Failed to delete clip: ${result.message}`);
 };
 
-export { getClips, getClipById, getVideoBlob, patchClip, deleteClip };
+export { getClips, getClipById, getClipMediaUrl, patchClip, deleteClip };

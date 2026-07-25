@@ -102,11 +102,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(ClipMediaUnavailable.class)
+    public ResponseEntity<APIResponse<Void>> handleClipMediaUnavailable(ClipMediaUnavailable ex) {
+        logger.error("ClipMediaUnavailable (clip {}): {}", ex.getClipId(), ex.getMessage());
+        APIResponse<Void> response = new APIResponse<>(ERROR, "Clip media is currently unavailable", null);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
     @ExceptionHandler(VodNotFound.class)
     public ResponseEntity<APIResponse<Void>> handleVodNotFound(VodNotFound ex) {
         logger.error("VodNotFound: {}", ex.getMessage());
         APIResponse<Void> response = new APIResponse<>(ERROR, ex.getMessage(), null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(VodMediaUnavailable.class)
+    public ResponseEntity<APIResponse<Void>> handleVodMediaUnavailable(VodMediaUnavailable ex) {
+        logger.error("VodMediaUnavailable (vod {}): {}", ex.getVodId(), ex.getMessage());
+        APIResponse<Void> response = new APIResponse<>(ERROR, "Vod media is currently unavailable", null);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
     @ExceptionHandler(NotStreaming.class)

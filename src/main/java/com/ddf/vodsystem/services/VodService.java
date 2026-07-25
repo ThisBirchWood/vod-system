@@ -139,6 +139,10 @@ public class VodService {
             throw new VodNotFound("Vod file not found for ID: " + id);
         }
 
+        if (!Files.isReadable(file)) {
+            throw new VodMediaUnavailable(id, "Vod file is not readable");
+        }
+
         return new FileSystemResource(file);
     }
 

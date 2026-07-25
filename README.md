@@ -94,6 +94,8 @@ docker compose -f docker-compose.dev.yml up
 
 Then run the backend and frontend separately in your usual workflow.
 
+- **Important**: Rootless docker should be used to avoid permission conflicts between the RTMP container and the Spring Boot host
+
 ---
 
 ## API Reference

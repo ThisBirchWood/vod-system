@@ -93,7 +93,7 @@ public class MediaService {
             );
         }).exceptionally(ex -> {
             job.setState(JobState.FAILED);
-            job.setErrorOutput(ex.getMessage());
+            job.setErrorOutput("Compression job failed");
             logger.error("Compression job with UUID {} failed due to: {}", job.getUuid(), ex.getMessage());
             return null;
         });
