@@ -133,11 +133,10 @@ public class MediaService {
                 .orElseThrow(() -> new NotAuthenticated("User is not authenticated"));
 
         Job job = jobRegistryService.generateJob();
-        SegmentContext ctx = resolveSegments(user, startTime, endTime);
-        float duration = (endTime.toEpochMilli() - startTime.toEpochMilli()) / 1000f;
+        StreamActionsService.SegmentSelection ctx = resolveSegments(user, startTime, endTime);
         Path outputFile = directoryService.getVodsDir(user.getId()).resolve(UUID.randomUUID() + ".mp4");
 
-        return dispatchSaveJob(job, ctx, duration, outputFile, () ->
+        return dispatchSaveJob(job, ctx, outputFile, () ->
             vodService.persist(
                 title == null ? Instant.now().toString() : title,
                 description == null ? "" : description,
@@ -211,10 +210,10 @@ public class MediaService {
                 .orElseThrow(() -> new NotAuthenticated("User is not authenticated"));
 
         Job job = jobRegistryService.generateJob();
-        SegmentContext ctx = resolveSegments(user, startTime, endTime);
+        StreamActionsService.SegmentSelection ctx = resolveSegments(user, startTime, endTime);
         Path outputFile = directoryService.getTempOutputDir().resolve(UUID.randomUUID() + ".mp4");
 
-        return dispatchSaveJob(job, ctx, duration, outputFile, () ->
+        return dispatchSaveJob(job, ctx, outputFile, () ->
             clipService.persistClip(
                 title == null ? Instant.now().toString() : title,
                 description == null ? "" : description,
@@ -225,22 +224,14 @@ public class MediaService {
         );
     }
 
-    private record SegmentContext(List<Path> segments, float trimOffset) {}
-
-    private SegmentContext resolveSegments(User user, Instant startTime, Instant endTime) throws IOException {
+    private StreamActionsService.SegmentSelection resolveSegments(User user, Instant startTime, Instant endTime) throws IOException {
         Path streamDir = directoryService.getStreamDir(user.getStreamKey());
-        List<Path> segments = streamActionsService.getSegmentsInRange(streamDir, startTime, endTime);
-        if (segments.isEmpty()) {
-            throw new IllegalArgumentException("No stream segments found in the given time range");
-        }
-        long firstMs = streamActionsService.parseTimestampMs(segments.getFirst());
-        float trimOffset = Math.max(0f, (startTime.toEpochMilli() - firstMs) / 1000f);
-        return new SegmentContext(segments, trimOffset);
+        return streamActionsService.selectSegments(streamDir, startTime, endTime);
     }
 
-    private Job dispatchSaveJob(Job job, SegmentContext ctx, float duration, Path outputFile, Runnable onSuccess) {
+    private Job dispatchSaveJob(Job job, StreamActionsService.SegmentSelection ctx, Path outputFile, Runnable onSuccess) {
         job.setState(JobState.PROCESSING);
-        streamActionsService.saveSection(ctx.segments(), ctx.trimOffset(), duration, outputFile, job.getProgressTracker())
+        streamActionsService.saveSection(ctx, outputFile, job.getProgressTracker())
             .thenRun(() -> {
                 job.setDownload(outputFile);
                 job.setState(JobState.SUCCEEDED);
