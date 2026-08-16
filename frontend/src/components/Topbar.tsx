@@ -58,13 +58,13 @@ const Topbar = ({
     }
 
     return (
-        <div className={clsx(className, "flex justify-between items-center px-4 py-2 bg-white border-b border-gray-200")}>
+        <div className={clsx(className, "flex justify-between items-center px-4 py-2 bg-sidebar border-b border-hairline")}>
             <MenuButton onClick={() => setSidebarToggled(!sidebarToggled)}>
                 {sidebarToggled ? <Menu size={24}/> :  <X size={24}/>}
             </MenuButton>
 
             { user ? (
-                <div>
+                <div className={"hover:bg-hover rounded-lg p-0.5"}>
                     <img
                         className={"w-8 h-8 rounded-full inline-block"}
                         src={user.profilePictureUrl}
@@ -76,8 +76,8 @@ const Topbar = ({
                             {user.name}
                             {isStreaming && (
                                 <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-live opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-live" />
                                 </span>
                             )}
                         </span>
@@ -86,7 +86,7 @@ const Topbar = ({
                                       onClick={() => navigate("/profile")} />
                         <DropdownItem item="Logout"
                                       onClick={() => handleLogout()}
-                                      className={"text-red-500 font-medium"} />
+                                      className={"text-error font-medium"} />
                     </Dropdown>
                 </div>
             ) :

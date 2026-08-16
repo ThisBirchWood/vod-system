@@ -62,11 +62,11 @@ export default function Playbar({ video, videoMetadata, className }: Props) {
             </div>
             <button
                 onClick={togglePlay}
-                className="hover:bg-gray-100 rounded-full p-1.5 transition-colors duration-150 text-gray-700"
+                className="hover:bg-hover rounded-full p-1.5 transition-colors duration-150 text-text-body"
             >
                 {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
-            <span>
+            <span className="font-data text-sm text-text-secondary tabular-nums">
                 {formatTime(video?.currentTime ?? 0)} / {formatTime(videoMetadata.duration ?? 0)}
             </span>
         </div>

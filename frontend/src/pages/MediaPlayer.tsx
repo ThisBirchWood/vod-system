@@ -202,16 +202,16 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
     if (notAuthenticated) {
         return (
             <div className="h-full flex flex-col items-center justify-center gap-4 text-center p-8">
-                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Lock size={24} className="text-gray-400" />
+                <div className="w-14 h-14 rounded-full bg-fields flex items-center justify-center">
+                    <Lock size={24} className="text-muted" />
                 </div>
                 <div>
-                    <p className="text-lg font-semibold text-gray-900">Not authenticated</p>
-                    <p className="text-sm text-gray-500 mt-1">You don't have access to this {noun.toLowerCase()}.</p>
+                    <p className="text-2xl font-heading text-text-primary">Not authenticated</p>
+                    <p className="text-sm text-text-secondary mt-1">You don't have access to this {noun.toLowerCase()}.</p>
                 </div>
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors duration-150"
+                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors duration-150"
                 >
                     <ArrowLeft size={16} />
                     Go back
@@ -224,7 +224,7 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
         <div className="h-full flex flex-col p-4 gap-3">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 flex-shrink-0 transition-colors duration-150"
+                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary flex-shrink-0 transition-colors duration-150"
             >
                 <ArrowLeft size={16} />
                 Back
@@ -233,7 +233,7 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
             {/* Player */}
             <div
                 ref={containerRef}
-                className="relative bg-black rounded-xl overflow-hidden flex-1 min-h-0 select-none"
+                className="relative bg-text-primary rounded-xl overflow-hidden flex-1 min-h-0 select-none"
                 onMouseMove={showControls}
                 onMouseLeave={() => isPlaying && setControlsVisible(false)}
                 onClick={togglePlay}
@@ -265,7 +265,7 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
                 {/* Buffering spinner */}
                 {isWaiting && mediaUrl && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-11 h-11 rounded-full border-[3px] border-white/20 border-t-white animate-spin" />
+                        <div className="w-11 h-11 rounded-full border-[3px] border-on-dark/20 border-t-on-dark animate-spin" />
                     </div>
                 )}
 
@@ -282,20 +282,20 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
                         {/* Scrub bar */}
                         <div
                             ref={progressRef}
-                            className="relative h-1 rounded-full bg-white/25 cursor-pointer mb-3 group/prog hover:h-1.5 transition-[height] duration-150"
+                            className="relative h-1 rounded-full bg-on-dark/25 cursor-pointer mb-3 group/prog hover:h-1.5 transition-[height] duration-150"
                             onMouseDown={(e) => { setIsDragging(true); seekTo(e.clientX); }}
                         >
-                            <div className="absolute inset-y-0 left-0 bg-white/35 rounded-full" style={{ width: `${bufferedPct}%` }} />
-                            <div className="absolute inset-y-0 left-0 bg-primary rounded-full" style={{ width: `${progressPct}%` }} />
+                            <div className="absolute inset-y-0 left-0 bg-on-dark/35 rounded-full" style={{ width: `${bufferedPct}%` }} />
+                            <div className="absolute inset-y-0 left-0 bg-terracotta-light rounded-full" style={{ width: `${progressPct}%` }} />
                             <div
-                                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover/prog:opacity-100 transition-opacity"
+                                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-on-dark rounded-full shadow opacity-0 group-hover/prog:opacity-100 transition-opacity"
                                 style={{ left: `calc(${progressPct}% - 6px)` }}
                             />
                         </div>
 
                         {/* Buttons row */}
-                        <div className="flex items-center gap-3 text-white">
-                            <button onClick={togglePlay} className="hover:text-white/70 transition-colors">
+                        <div className="flex items-center gap-3 text-on-dark">
+                            <button onClick={togglePlay} className="hover:text-on-dark/70 transition-colors">
                                 {isPlaying
                                     ? <Pause size={20} fill="currentColor" />
                                     : <Play size={20} fill="currentColor" />}
@@ -303,7 +303,7 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
 
                             {/* Volume — slider expands on hover */}
                             <div className="flex items-center gap-1.5 group/vol">
-                                <button onClick={toggleMute} className="hover:text-white/70 transition-colors">
+                                <button onClick={toggleMute} className="hover:text-on-dark/70 transition-colors">
                                     <VolumeIcon size={18} />
                                 </button>
                                 <div className="overflow-hidden w-0 group-hover/vol:w-16 transition-[width] duration-200">
@@ -312,18 +312,18 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
                                         min={0} max={1} step={0.02}
                                         value={effectiveVolume}
                                         onChange={handleVolumeChange}
-                                        className="w-16 accent-white cursor-pointer"
+                                        className="w-16 accent-on-dark cursor-pointer"
                                     />
                                 </div>
                             </div>
 
-                            <span className="text-xs font-mono tabular-nums text-white/80">
+                            <span className="text-xs font-data tabular-nums text-on-dark/80">
                                 {formatTime(currentTime)} / {formatTime(duration)}
                             </span>
 
                             <div className="flex-1" />
 
-                            <button onClick={toggleFullscreen} className="hover:text-white/70 transition-colors">
+                            <button onClick={toggleFullscreen} className="hover:text-on-dark/70 transition-colors">
                                 {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                             </button>
                         </div>
@@ -331,17 +331,17 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
                 </div>
             </div>
 
-            {error && <div className="text-red-500 text-sm mt-3">{error}</div>}
+            {error && <div className="text-error text-sm mt-3">{error}</div>}
             {!mediaLoaded && !error && (
-                <div className="text-gray-400 text-sm mt-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin" />
+                <div className="text-muted text-sm mt-3 flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full border-2 border-inactive border-t-muted animate-spin" />
                     Loading video...
                 </div>
             )}
 
             <Box className="p-4 flex-shrink-0">
-                <p className="text-xl font-semibold text-gray-900">{item?.title || "(No Title)"}</p>
-                <p className="text-sm text-gray-500 mt-1">{timeAgo}</p>
+                <p className="text-2xl font-heading text-text-primary">{item?.title || "(No Title)"}</p>
+                <p className="text-sm text-text-secondary mt-1">{timeAgo}</p>
             </Box>
         </div>
     );

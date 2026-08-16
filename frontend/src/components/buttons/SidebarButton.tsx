@@ -1,5 +1,5 @@
-import MenuButton from "./MenuButton.tsx";
 import { Link, useLocation } from "react-router-dom";
+import React from "react";
 
 type Props = {
     url: string;
@@ -13,9 +13,15 @@ const SidebarButton = ({url, logo, label}: Props) => {
 
     return (
         <Link className="w-full" to={url}>
-            <MenuButton className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium rounded-md ${isActive ? "bg-gray-100 text-gray-900" : "text-gray-600"}`}>
+            <button className={`flex items-center gap-2.5 w-full text-sm 
+            font-body p-2 hover:bg-hover hover:text-text-strong
+            rounded-md 
+            ${isActive ?
+                "bg-card text-text-strong font-medium shadow-sm"
+                :
+                "text-text-primary"}`}>
                 {logo}{label}
-            </MenuButton>
+            </button>
         </Link>
     )
 }

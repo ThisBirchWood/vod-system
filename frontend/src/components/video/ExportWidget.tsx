@@ -1,4 +1,4 @@
-import BlueButton from "../buttons/BlueButton.tsx";
+import PrimaryButton from "../buttons/PrimaryButton.tsx";
 import React from "react";
 
 type props = {
@@ -24,24 +24,24 @@ const Spinner = () => (
 const ExportWidget = ({dataSend, handleDownload, downloadable, progress, uploading}: props) => {
     return (
         <div className={"flex flex-col gap-3"}>
-            <BlueButton
+            <PrimaryButton
                 onClick={dataSend}
                 disabled={uploading}
                 className={uploading ? "opacity-60 cursor-not-allowed flex items-center justify-center gap-2" : ""}
             >
                 {uploading && <Spinner />}
                 {uploading ? "Uploading..." : "Export"}
-            </BlueButton>
+            </PrimaryButton>
 
             <div className="h-10 flex items-center">
                 { downloadable ?
-                    (<BlueButton className="w-full" onClick={handleDownload}>
+                    (<PrimaryButton className="w-full" onClick={handleDownload}>
                         Download
-                    </BlueButton>)
+                    </PrimaryButton>)
                     :(
                         <progress
                             value={progress}
-                            className="w-full h-1.5 rounded bg-gray-200">
+                            className="w-full h-1.5 rounded bg-fields">
                         </progress>
                     )
                 }

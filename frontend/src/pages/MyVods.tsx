@@ -26,7 +26,7 @@ const MyVods = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-6">My VoDs</h1>
+            <h1 className="text-4xl font-heading text-text-primary mb-6">My VoDs</h1>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {vods.map((vod) => (
@@ -46,13 +46,13 @@ const MyVods = () => {
             </div>
 
             {vods.length === 0 && !error && (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-16 text-muted">
                     <p className="text-base">No VoDs yet.</p>
                     <p className="text-sm mt-1">Your stream recordings will appear here.</p>
                 </div>
             )}
 
-            {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+            {error && <p className="text-sm text-error mt-4">{error}</p>}
         </div>
     );
 };

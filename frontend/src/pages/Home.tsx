@@ -43,10 +43,10 @@ const Home = () => {
                     alt="VoD System Logo"
                     className="h-24 mb-6 object-contain"
                 />
-                <h1 className="text-4xl font-semibold text-gray-900 mb-3 leading-tight">
+                <h1 className="text-4xl font-heading text-text-primary">
                     A home for your clips.
                 </h1>
-                <p className="text-base text-gray-500 leading-relaxed">
+                <p className="text-text-secondary">
                     Upload, trim, and export video clips. Stream live if you need to.
                 </p>
             </div>
@@ -56,21 +56,21 @@ const Home = () => {
                 {features.map(({ icon: Icon, title, description }) => (
                     <div
                         key={title}
-                        className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-3 shadow-sm"
+                        className="bg-card border border-hairline rounded-xl p-5 flex flex-col gap-3 shadow-sm"
                     >
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <Icon size={18} className="text-primary" />
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                            <Icon size={18} className="text-terracotta" />
                         </div>
                         <div>
-                            <p className="font-semibold text-gray-900 text-sm mb-1">{title}</p>
-                            <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+                            <p className="font-body text-text-strong font-bold text-sm mb-1">{title}</p>
+                            <p className="text-sm text-text-secondary leading-relaxed">{description}</p>
                         </div>
                     </div>
                 ))}
             </div>
 
             {/* Format note */}
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted">
                 Supports MP4, MOV, WebM, and OGG.
             </p>
         </div>

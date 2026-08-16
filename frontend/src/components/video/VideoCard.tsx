@@ -70,7 +70,7 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                         className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-200"
                     />
 
-                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white px-1.5 py-0.5 rounded text-xs font-medium pointer-events-none">
+                    <span className="absolute top-1.5 left-1.5 bg-text-primary/75 text-on-dark px-1.5 py-0.5 rounded text-xs font-data pointer-events-none">
                         {formatTime(duration)}
                     </span>
 
@@ -82,18 +82,18 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                         >
                             <button
                                 onClick={(e) => stopAndRun(e, () => { setMenuOpen(v => !v); setConfirmDelete(false); })}
-                                className="bg-black/70 hover:bg-black/90 text-white rounded p-0.5 transition-colors"
+                                className="bg-text-primary/75 hover:bg-text-primary/90 text-on-dark rounded p-0.5 transition-colors"
                             >
                                 <MoreVertical size={14} />
                             </button>
 
                             {menuOpen && (
-                                <div className="absolute right-0 top-7 w-32 bg-white rounded-lg border border-gray-200 shadow-md z-50 py-1 overflow-hidden">
+                                <div className="absolute right-0 top-7 w-32 bg-card rounded-lg border border-hairline shadow-md z-50 py-1 overflow-hidden">
                                     {!confirmDelete && (<>
                                         {onEdit && (
                                             <button
                                                 onClick={(e) => stopAndRun(e, onEdit)}
-                                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-body hover:bg-hover"
                                             >
                                                 <Pencil size={13} /> Edit
                                             </button>
@@ -101,7 +101,7 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                                         {onDelete && (
                                             <button
                                                 onClick={(e) => stopAndRun(e, () => setConfirmDelete(true))}
-                                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-error hover:bg-hover"
                                             >
                                                 <Trash2 size={13} /> Delete
                                             </button>
@@ -109,17 +109,17 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                                     </>)}
                                     {confirmDelete && (
                                         <div className="px-3 py-2">
-                                            <p className="text-xs text-gray-600 mb-2">Delete this {itemLabel}?</p>
+                                            <p className="text-xs text-text-secondary mb-2">Delete this {itemLabel}?</p>
                                             <div className="flex gap-1.5">
                                                 <button
                                                     onClick={(e) => stopAndRun(e, onDelete!)}
-                                                    className="flex-1 text-xs bg-red-500 text-white rounded px-2 py-1 hover:bg-red-600 transition-colors"
+                                                    className="flex-1 text-xs bg-error text-on-accent rounded px-2 py-1 hover:bg-terracotta-hover transition-colors"
                                                 >
                                                     Delete
                                                 </button>
                                                 <button
                                                     onClick={(e) => stopAndRun(e, () => setConfirmDelete(false))}
-                                                    className="flex-1 text-xs bg-gray-100 text-gray-600 rounded px-2 py-1 hover:bg-gray-200 transition-colors"
+                                                    className="flex-1 text-xs bg-fields text-text-secondary rounded px-2 py-1 hover:bg-hover transition-colors"
                                                 >
                                                     Cancel
                                                 </button>
@@ -133,10 +133,10 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                 </div>
 
                 <div className="flex flex-col p-2">
-                    <p className="font-medium text-gray-900 text-sm leading-snug line-clamp-2">
+                    <p className="font-body text-text-strong text-sm leading-snug line-clamp-2">
                         {title === "" ? "(No Title)" : title}
                     </p>
-                    <p className="text-gray-500 text-xs mt-0.5">{timeAgo}</p>
+                    <p className="text-muted text-xs mt-0.5">{timeAgo}</p>
                 </div>
             </div>
         </Link>

@@ -3,9 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { getClipById, patchClip } from "../utils/api/clips.ts";
 import Box from "../components/Box.tsx";
-import BlueButton from "../components/buttons/BlueButton.tsx";
+import PrimaryButton from "../components/buttons/PrimaryButton.tsx";
 
-const inputClass = "border border-gray-300 bg-white rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors";
+const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 
 const EditClip = () => {
     const { id } = useParams();
@@ -50,20 +50,20 @@ const EditClip = () => {
         <div className="px-8 py-10 max-w-2xl mx-auto">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors duration-150"
+                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors duration-150"
             >
                 <ArrowLeft size={16} />
                 Back
             </button>
 
-            <h1 className="text-2xl font-semibold text-gray-900 mb-6">Edit Clip</h1>
+            <h1 className="text-4xl font-heading text-text-primary mb-6">Edit Clip</h1>
 
             {loading ? (
-                <div className="text-gray-400 text-sm">Loading...</div>
+                <div className="text-muted text-sm">Loading...</div>
             ) : (
                 <Box className="p-6 flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-gray-700">Title</label>
+                        <label className="text-sm font-medium text-text-secondary">Title</label>
                         <input
                             type="text"
                             value={title}
@@ -74,7 +74,7 @@ const EditClip = () => {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-gray-700">Description</label>
+                        <label className="text-sm font-medium text-text-secondary">Description</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
@@ -84,17 +84,17 @@ const EditClip = () => {
                         />
                     </div>
 
-                    {error && <p className="text-sm text-red-500">{error}</p>}
+                    {error && <p className="text-sm text-error">{error}</p>}
 
                     <div className="flex items-center gap-3 pt-1">
-                        <BlueButton onClick={handleSave} disabled={saving} className="w-28">
+                        <PrimaryButton onClick={handleSave} disabled={saving} className="w-28">
                             {saving ? "Saving…" : saved
                                 ? <span className="flex items-center gap-1.5 justify-center"><Check size={14} />Saved</span>
                                 : "Save"}
-                        </BlueButton>
+                        </PrimaryButton>
                         <button
                             onClick={() => navigate(-1)}
-                            className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-150"
+                            className="text-sm text-text-secondary hover:text-text-primary transition-colors duration-150"
                         >
                             Cancel
                         </button>

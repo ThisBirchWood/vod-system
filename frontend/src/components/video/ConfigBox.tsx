@@ -8,7 +8,7 @@ type Props = {
     className?: string;
 };
 
-const inputClass = "border border-gray-300 bg-white rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors";
+const inputClass = "border border-hairline bg-card rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 
 export default function ConfigBox({ setMetadata, className }: Props) {
     const updateRes = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -26,7 +26,7 @@ export default function ConfigBox({ setMetadata, className }: Props) {
 
     return (
         <div className={clsx("flex flex-col gap-3 p-6", className)}>
-            <h2 className="text-sm font-semibold text-gray-800 mb-1">Export Settings</h2>
+            <h2 className="text-sm text-text-primary font-semibold mb-1">Export Settings</h2>
 
             <Selector label="Resolution">
                 <select id="resolution" name="resolution" defaultValue="1280,720"

@@ -8,43 +8,43 @@ type props = {
     className?: string
 }
 
-const Divider = () => <hr className="my-1.5 mx-2 border-gray-100" />;
+const Divider = () => <hr className="w-full my-1.5 mx-2 border-hover" />;
 
 const Sidebar = ({user, className}: props) => {
     return (
-        <aside className={clsx("h-screen flex flex-col bg-white border-r border-gray-200", className)}>
-            <div className="px-4 pt-5 pb-3">
-                <img
-                    className="w-36 mx-auto"
-                    src="../../public/logo.png"
-                    alt="VoD System Logo"
-                />
-            </div>
-            <nav className="flex flex-col flex-1 px-2 pb-4">
-                <div className="flex flex-col gap-0.5">
+        <aside className={clsx("h-screen flex flex-col bg-sidebar border-r border-hairline p-2 items-center gap-1", className)}>
+            <h2 className={"font-heading text-2xl mt-1"}>The VoD System</h2>
+
+            <nav className="flex flex-col flex-1 items-center w-3/4">
+                <Divider />
+
+                <div className="flex flex-col gap-0.5 w-full">
                     <SidebarButton url="/" logo={<Home size={18}/>} label="Home" />
                     <SidebarButton url="/create" logo={<Plus size={18}/>} label="Create Clip" />
                 </div>
 
+                <Divider />
+
                 {user && (
-                    <>
-                        <Divider />
-                        <div className="flex flex-col gap-0.5">
-                            <SidebarButton url="/stream" logo={<Radio size={18}/>} label="Stream" />
-                            <SidebarButton url="/my-clips" logo={<Film size={18}/>} label="Clips" />
-                            <SidebarButton url="/my-vods" logo={<Video size={18}/>} label="VoDs" />
+                        <div className="flex flex-col gap-0.5 w-full">
+                            <div>
+                                <SidebarButton url="/stream" logo={<Radio size={18}/>} label="Stream" />
+                                <SidebarButton url="/my-clips" logo={<Film size={18}/>} label="Clips" />
+                                <SidebarButton url="/my-vods" logo={<Video size={18}/>} label="VoDs" />
+                            </div>
                         </div>
-                    </>
                 )}
 
                 <div className="flex-1" />
 
-                {user && (
-                    <>
-                        <Divider />
-                        <SidebarButton url="/profile" logo={<UserIcon size={18}/>} label="Profile" />
-                    </>
-                )}
+                <div className={"w-full"}>
+                    {user && (
+                        <>
+                            <Divider />
+                            <SidebarButton url="/profile" logo={<UserIcon size={18}/>} label="Profile" />
+                        </>
+                    )}
+                </div>
             </nav>
         </aside>
     );

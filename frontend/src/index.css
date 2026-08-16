@@ -1,37 +1,50 @@
 @import "tailwindcss";
-@plugin "flowbite-react/plugin/tailwindcss";
-@source "../.flowbite-react/class-list.json";
 
 @theme {
-    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* ── Fonts ───────────────────────────────────────────────────────────── */
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+    --font-data: "IBM Plex Mono", monospace;
 
-    /* Breakpoints */
-    --breakpoint-3xl: 1920px;
+    /* ── Surfaces ────────────────────────────────────────────────────────── */
+    --color-background: #F7F4EE;
+    --color-sidebar: #F2EEE6;
+    --color-card: #FDFBF7;
+    --color-fields: #F4F0E8;
+    --color-dropzone: #F9F6EF;
 
-    --color-primary: oklch(0.55 0.21 254);
-    --color-primary-pressed: oklch(0.45 0.21 254);
-    --color-secondary: oklch(0.94 0.01 250);
-    --color-accent: oklch(0.68 0.20 288);
-    --color-text: oklch(0.17 0.01 270);
-    --color-background: oklch(0.97 0.005 250);
-    --color-surface: oklch(1 0 0);
-    --color-border: oklch(0.91 0.008 250);
+    /* ── Ink ─────────────────────────────────────────────────────────────── */
+    --color-text-primary: #2B2620;
+    --color-text-strong: #35302A;
+    --color-text-body: #554D44;
+    --color-text-secondary: #6E6559;
+    --color-muted: #9A9084;
 
-    /* Easing */
-    --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
-    --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
-}
+    /* ── Accents ─────────────────────────────────────────────────────────── */
+    --color-terracotta: #A85A38;
+    --color-terracotta-hover: #94492A;
+    --color-terracotta-light: #C87A52;
+    --color-terracotta-disabled: #C9AE9C;
+    --color-olive: #6E7A50;
 
-#range-slider .range-slider__range {
-    background: var(--color-primary);
-}
+    /* ── Status ──────────────────────────────────────────────────────────── */
+    --color-live: #B5432E;
+    --color-error: #B5432E;
 
-#range-slider .range-slider__thumb {
-    background: var(--color-primary);
+    /* ── Ink on dark / accent surfaces ───────────────────────────────────── */
+    --color-on-dark: #FBF8F2;
+    --color-on-accent: #FDFBF7;
+
+    /* ── Lines, chips, placeholders ──────────────────────────────────────── */
+    --color-hairline: #F0EBE2;
+    --color-hover: #E7E0D2;
+    --color-selected: #F6EFE6;
+    --color-ring: #E2DACB;
+    --color-inactive: #DED7CA;
+    --color-inactive-strong: #C4BAA9;
 }
 
 :root {
-    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
     font-weight: 400;
     font-synthesis: none;
@@ -42,4 +55,35 @@
 
 body {
     background-color: var(--color-background);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    color: var(--color-text-body);
+}
+
+@utility font-heading {
+    font-family: "Newsreader", serif;
+    font-weight: 400;
+    color: var(--color-text-primary);
+}
+
+/* Clip trim slider (react-range-slider-input). Its own stylesheet ships blue
+   defaults; the #id beats those class selectors regardless of import order. */
+#range-slider {
+    height: 8px;
+    background: var(--color-fields);
+    border-radius: 8px;
+}
+
+#range-slider .range-slider__range {
+    background: var(--color-terracotta-light);
+}
+
+#range-slider .range-slider__thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--color-terracotta);
+    box-shadow: 0 1px 2px rgba(90, 40, 20, 0.2);
+}
+
+#range-slider .range-slider__thumb:focus-visible {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-terracotta) 35%, transparent);
 }

@@ -79,7 +79,7 @@ const ClipEdit = () => {
         const interval = setInterval(async () => await pollProgress(jobId, interval), 500);
     };
 
-    const pollProgress = async (jobId: string, intervalId: number) => {
+    const pollProgress = async (jobId: string, intervalId: ReturnType<typeof setInterval>) => {
         getJob(jobId)
             .then((job) => {
                 setProgress(job.progress);
@@ -128,7 +128,7 @@ const ClipEdit = () => {
             <video
                 ref={videoRef}
                 src={videoUrl}
-                className={"w-full rounded-lg shadow-sm bg-black"}
+                className={"w-full rounded-lg shadow-sm bg-text-primary"}
                 onLoadedMetadata={handleVideoMetadataLoaded}
             />
 
@@ -142,7 +142,7 @@ const ClipEdit = () => {
                     <Playbar
                         video={videoRef.current}
                         videoMetadata={metadata}
-                        className={"w-full accent-primary"}
+                        className={"w-full accent-terracotta"}
                     />
 
                     <PlaybackSlider
@@ -150,7 +150,7 @@ const ClipEdit = () => {
                         videoMetadata={metadata}
                         sliderValue={playbackValue}
                         setSliderValue={setPlaybackValue}
-                        className={"w-full accent-primary"}
+                        className={"w-full accent-terracotta"}
                     />
 
                     <ClipRangeSlider
@@ -158,11 +158,11 @@ const ClipEdit = () => {
                         videoMetadata={metadata}
                         setSliderValue={setPlaybackValue}
                         setMetadata={setOutputMetadata}
-                        className={"w-full mt-2 bg-primary"}
+                        className={"w-full mt-2"}
                     />
 
                     {error && (
-                        <div className={"text-red-600 text-center mt-2"}>
+                        <div className={"text-error text-center mt-2"}>
                             {error}
                         </div>
                     )}
