@@ -21,11 +21,11 @@ const ClipUpload = () => {
                 <div
                     className="cursor-pointer rounded-lg border-2
                                 border-dashed border-hairline bg-dropzone
-                                p-4 text-center text-sm text-text-secondary
+                                text-center text-sm text-text-secondary
                                 hover:bg-hover transition-colors duration-150
                                 min-h-50 flex flex-col items-center justify-center gap-2"
                     >
-                    <label className="cursor-pointer block">
+                    <label className="cursor-pointer flex flex-col items-center justify-center gap-2 w-full h-full">
                         Choose file
                         <input
                             type="file"
