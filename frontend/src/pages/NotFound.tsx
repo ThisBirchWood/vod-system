@@ -15,7 +15,7 @@ const NotFound = () => {
                 This page does not exist.
             </h2>
             <p className="text-sm text-faint-mono/70 max-w-xs">
-                <a onClick={goHomePage}>Click here</a> to get back to the home page.
+                <a onClick={goHomePage} className={"font-bold cursor-pointer"}>Click here</a> to get back to the home page.
             </p>
         </div>
     );
