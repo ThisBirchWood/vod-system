@@ -15,6 +15,8 @@ import EditVod from "./pages/EditVod.tsx";
 import Profile from "./pages/Profile.tsx";
 import StreamControl from "./pages/StreamControl.tsx";
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import {config} from "./config.ts";
+ import NotFound from "./pages/NotFound.tsx";
 
 
 function App() {
@@ -23,7 +25,7 @@ function App() {
     }, []);
 
     return (
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+        <GoogleOAuthProvider clientId={config.googleClientId}>
             <Router>
                 <Routes>
                     <Route element={<MainLayout />}>
@@ -38,6 +40,7 @@ function App() {
                         <Route path="/vods/:id/edit" element={<EditVod />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/stream" element={<StreamControl />} />
+                        <Route path="*" element={<NotFound />} />
                     </Route>
                 </Routes>
             </Router>

@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import {config} from "../../config.ts";
+
+const API_URL = config.apiUrl;
 
 class AuthError extends Error {
     constructor() { super("Not authenticated"); this.name = "AuthError"; }

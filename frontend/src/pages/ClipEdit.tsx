@@ -10,8 +10,9 @@ import { getJob } from "../utils/api/jobs"
 import type { VideoMetadata } from "../utils/types.ts";
 import Box from "../components/Box.tsx";
 import MetadataBox from "../components/video/MetadataBox.tsx";
+import {config} from "../config.ts";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = config.apiUrl;
 
 const ClipEdit = () => {
     const location = useLocation();

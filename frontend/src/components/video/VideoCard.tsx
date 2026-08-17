@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { isThumbnailAvailable } from "../../utils/api/client.ts";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import {config} from "../../config.ts";
 
 type VideoCardProps = {
     id: number,
@@ -19,7 +20,7 @@ type VideoCardProps = {
 }
 
 const fallbackThumbnail = "../../../public/default_thumbnail.png";
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = config.apiUrl;
 
 const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className, mediaApiPath = '/api/v1/clips', playerPath = '/video', itemLabel = 'clip' }: VideoCardProps) => {
     const [timeAgo, setTimeAgo] = useState(dateToTimeAgo(stringToDate(createdAt)));
