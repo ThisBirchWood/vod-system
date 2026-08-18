@@ -6,14 +6,12 @@ import com.ddf.vodsystem.controllers.dto.ClipUpdateRequest;
 import com.ddf.vodsystem.entities.Clip;
 import com.ddf.vodsystem.services.ClipService;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.MediaTypeFactory;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/v1/clips")
@@ -96,7 +94,7 @@ public class ClipController {
     }
 
     @GetMapping("/{id}/thumbnail")
-    public ResponseEntity<Resource> downloadThumbnail(@PathVariable Long id) {
+    public ResponseEntity<Resource> downloadThumbnail(@PathVariable Long id) throws IOException {
         Resource resource = clipService.downloadThumbnail(id);
 
         if (resource == null || !resource.exists()) {
@@ -104,6 +102,8 @@ public class ClipController {
         }
 
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(2, TimeUnit.DAYS).cachePublic())
+                .lastModified(resource.lastModified())
                 .header(HttpHeaders.CONTENT_DISPOSITION, String.format(FILENAME_HEADER, resource.getFilename()))
                 .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
                 .body(resource);

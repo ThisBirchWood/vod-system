@@ -1,8 +1,7 @@
 import clsx from "clsx";
 import { formatTime, stringToDate, dateToTimeAgo } from "../../utils/utils.ts";
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
-import { isThumbnailAvailable } from "../../utils/api/client.ts";
+import React, { useEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {config} from "../../config.ts";
 
@@ -19,12 +18,12 @@ type VideoCardProps = {
     itemLabel?: string,
 }
 
-const fallbackThumbnail = "../../../public/default_thumbnail.png";
+const fallbackThumbnail = "public/default_thumbnail.png";
 const API_URL = config.apiUrl;
 
 const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className, mediaApiPath = '/api/v1/clips', playerPath = '/video', itemLabel = 'clip' }: VideoCardProps) => {
     const [timeAgo, setTimeAgo] = useState(dateToTimeAgo(stringToDate(createdAt)));
-    const [thumbnailAvailable, setThumbnailAvailable] = useState(true);
+    const [imgFailed, setImgFailed] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -36,12 +35,6 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
         }, 1000);
         return () => clearInterval(interval);
     }, [createdAt]);
-
-    useEffect(() => {
-        isThumbnailAvailable(thumbnailUrl)
-            .then(setThumbnailAvailable)
-            .catch(() => setThumbnailAvailable(false));
-    }, [thumbnailUrl]);
 
     useEffect(() => {
         if (!menuOpen) return;
@@ -66,7 +59,8 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
             <div className={clsx("flex flex-col group cursor-pointer", className)}>
                 <div className="relative overflow-hidden rounded-lg">
                     <img
-                        src={thumbnailAvailable ? thumbnailUrl : fallbackThumbnail}
+                        src={imgFailed ? fallbackThumbnail : thumbnailUrl}
+                        onError={() => setImgFailed(true)}
                         alt="Video Thumbnail"
                         className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-200"
                     />
