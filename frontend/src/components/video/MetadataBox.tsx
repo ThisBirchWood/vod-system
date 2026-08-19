@@ -9,9 +9,12 @@ type Props = {
 
 const MetadataBox = ({ setMetadata, className }: Props) => (
     <div className={clsx("flex flex-col content-between p-6 gap-2", className)}>
-        <p className="w-full font-body text-text-strong font-bold text-sm">Title</p>
+        <p className="w-full font-body text-text-strong font-bold text-sm">
+            Title <span className="text-error">*</span>
+        </p>
         <input
             type="text"
+            required
             placeholder="Enter title"
             onChange={(e) => setMetadata(prev => ({ ...prev, title: e.target.value }))}
             className="border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors"

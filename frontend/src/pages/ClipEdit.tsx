@@ -64,12 +64,18 @@ const ClipEdit = () => {
     const sendData = async () => {
         if (!localFile || uploading) return;
 
+        const title = outputMetadata.title.trim();
+        if (!title) {
+            setError('A title is required before exporting.');
+            return;
+        }
+
         setUploading(true);
         setError(null);
 
         let jobId: string;
         try {
-            jobId = await compress(localFile, outputMetadata);
+            jobId = await compress(localFile, { ...outputMetadata, title });
             setUploadedId(jobId);
         } catch (err: unknown) {
             setError(`Failed to start compression: ${err instanceof Error ? err.message : 'Unknown error'}`);
