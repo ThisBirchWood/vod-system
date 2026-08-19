@@ -30,8 +30,9 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/api/v1/**").permitAll()
+                        .requestMatchers("/api/v1/media/compress").permitAll() // compression available without authenticated
+                        .requestMatchers("/api/v1/jobs/**").permitAll() // same with jobs
                         .requestMatchers("/api/v1/media/**").authenticated()
-                        .requestMatchers("/api/v1/jobs/**").authenticated()
                         .requestMatchers("/api/v1/users/me", "/api/v1/users/logout").authenticated()
                         .requestMatchers("/api/v1/users/login").permitAll()
                         .requestMatchers("/api/v1/stream/start", "/api/v1/stream/stop", "/api/v1/stream/heartbeat").permitAll()
