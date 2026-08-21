@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  REGISTRY: gitea.vodsystem.ddns.net
+  REGISTRY: gitea.defaoite.dev
   IMAGE_PREFIX: dylan/vod-system
 
 jobs:

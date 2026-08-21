@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: gitea.vodsystem.ddns.net/dylan/vod-system-backend:latest
+    image: gitea.defaoite.dev/dylan/vod-system-backend:latest
     container_name: vod_backend
     depends_on:
       - postgres
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: gitea.vodsystem.ddns.net/dylan/vod-system-frontend:latest
+    image: gitea.defaoite.dev/dylan/vod-system-frontend:latest
     container_name: vod_frontend
     environment:
       VITE_API_URL: ${BACKEND_URL}
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
 
   rtmp:
-    image: gitea.vodsystem.ddns.net/dylan/vod-system-rtmp:latest
+    image: gitea.defaoite.dev/dylan/vod-system-rtmp:latest
     container_name: vod_rtmp
     env_file:
       - .env
