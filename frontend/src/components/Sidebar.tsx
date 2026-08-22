@@ -1,16 +1,17 @@
 import clsx from "clsx";
 import SidebarButton from "./buttons/SidebarButton.tsx";
 import { Plus, Film, Home, User as UserIcon, Video, Radio } from 'lucide-react';
-import type {User} from "../utils/types.ts";
+import { useAuth } from "../auth/useAuth.ts";
 
 type props = {
-    user: User | null;
     className?: string
 }
 
 const Divider = () => <hr className="w-full my-1.5 mx-2 border-hover" />;
 
-const Sidebar = ({user, className}: props) => {
+const Sidebar = ({className}: props) => {
+    const { user } = useAuth();
+
     return (
         <aside className={clsx("h-screen flex flex-col bg-sidebar border-r border-hairline p-2 items-center gap-1", className)}>
             <h2 className={"font-heading text-2xl mt-1"}>The VoD System</h2>

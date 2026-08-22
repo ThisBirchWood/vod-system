@@ -1,21 +1,18 @@
 import { Menu, X } from 'lucide-react';
-import { login, logout } from "../utils/api/users.ts";
 import { Dropdown, DropdownItem } from "./Dropdown.tsx";
 import { GoogleLogin } from '@react-oauth/google';
 
-import type { User } from "../utils/types.ts";
 import type { CredentialResponse } from '@react-oauth/google';
 
 import MenuButton from "./buttons/MenuButton.tsx";
 import clsx from "clsx";
 import {useNavigate} from "react-router-dom";
+import { useAuth } from "../auth/useAuth.ts";
 
 
 type props = {
     sidebarToggled: boolean;
     setSidebarToggled: (toggled: boolean) => void;
-    user: User | null;
-    fetchUser: () => void;
     isStreaming: boolean;
     className?: string;
 }
@@ -23,12 +20,11 @@ type props = {
 const Topbar = ({
                     sidebarToggled,
                     setSidebarToggled,
-                    user,
-                    fetchUser,
                     isStreaming,
                     className}: props) => {
 
     const navigate = useNavigate();
+    const { user, login, logout } = useAuth();
 
     const handleLogin = (response: CredentialResponse) => {
         if (!response.credential) {
@@ -37,10 +33,6 @@ const Topbar = ({
         }
 
         login(response.credential)
-            .then(() => {
-                fetchUser();
-                navigate(0);
-            })
             .catch((error) => {
                 console.error("Login failed:", error);
             });
@@ -48,10 +40,7 @@ const Topbar = ({
 
     const handleLogout = () => {
         logout()
-            .then(() => {
-                fetchUser();
-                navigate("/");
-            })
+            .then(() => navigate("/"))
             .catch((error) => {
                 console.error("Logout failed:", error);
             });

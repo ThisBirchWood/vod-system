@@ -20,12 +20,11 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     container_name: vod_rtmp
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    network_mode: host
     env_file:
       - .env
     environment:
-      - WEB_SERVER_URL=http://host.docker.internal:8080
+      - WEB_SERVER_URL=http://localhost:8080
     ports:
       - "1935:1935"
     volumes:

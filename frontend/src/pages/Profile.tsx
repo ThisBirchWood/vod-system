@@ -1,18 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Eye, EyeOff, Copy, Check } from "lucide-react";
 import Box from "../components/Box.tsx";
-import { getUser } from "../utils/api/users.ts";
-import type { User } from "../utils/types.ts";
+import { useAuth } from "../auth/useAuth.ts";
 import { formatLocalDate } from "../utils/utils.ts";
 
 const Profile = () => {
-    const [user, setUser] = useState<User | null>(null);
+    const { user } = useAuth();
     const [keyVisible, setKeyVisible] = useState(false);
     const [copied, setCopied] = useState(false);
-
-    useEffect(() => {
-        getUser().then(setUser).catch(console.error);
-    }, []);
 
     const handleCopy = () => {
         if (!user?.streamKey) return;

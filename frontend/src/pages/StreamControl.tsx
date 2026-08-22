@@ -3,12 +3,12 @@ import { Radio, Check, Bookmark, Scissors, Film, Activity, Loader2, X } from "lu
 import clsx from "clsx";
 import Box from "../components/Box.tsx";
 import PrimaryButton from "../components/buttons/PrimaryButton.tsx";
-import { getUser } from "../utils/api/users.ts";
+import { useAuth } from "../auth/useAuth.ts";
 import { getCurrentStream, getStreamHistory } from "../utils/api/stream.ts";
 import { getMarkers, createMarker, deleteMarker } from "../utils/api/markers.ts";
 import { saveSectionByMarkers, clipSection } from "../utils/api/media.ts";
 import { getJob } from "../utils/api/jobs.ts";
-import type { User, StreamStatus, StreamHistoryItem, Marker, JobResponse } from "../utils/types.ts";
+import type { StreamStatus, StreamHistoryItem, Marker, JobResponse } from "../utils/types.ts";
 import { formatTime, formatLocalDate, stringToDate } from "../utils/utils.ts";
 
 const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
@@ -60,7 +60,7 @@ const JobStatus = ({ job }: { job: TrackedJob }) => {
 };
 
 const StreamControl = () => {
-    const [user, setUser] = useState<User | null>(null);
+    const { user } = useAuth();
     const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
     const [streamDetails, setStreamDetails] = useState<StreamHistoryItem | null>(null);
     const [now, setNow] = useState(Date.now());
@@ -84,10 +84,6 @@ const StreamControl = () => {
     const [jobs, setJobs] = useState<TrackedJob[]>([]);
 
     const isStreaming = streamStatus?.isStreaming ?? false;
-
-    useEffect(() => {
-        getUser().then(setUser).catch(() => setUser(null));
-    }, []);
 
     useEffect(() => {
         if (!user) return;
