@@ -26,6 +26,14 @@ public class MediaController {
         this.mediaService = mediaService;
     }
 
+    /**
+     * Starts an asynchronous job to compress an uploaded video file.
+     *
+     * @param file    the uploaded video to compress
+     * @param options trim window, resolution, fps, and target size for the output
+     * @return {@code 200 OK} wrapping the new job's UUID for polling
+     * @throws IOException if saving the upload to temporary storage fails
+     */
     @PostMapping(value = "/compress", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<APIResponse<UUIDResponse>> compress(
             @RequestParam("file")MultipartFile file,
@@ -40,6 +48,13 @@ public class MediaController {
     }
 
 
+    /**
+     * Starts an asynchronous job to save a section of the user's stream between two timestamps as a VoD.
+     *
+     * @param saveSectionRequest the start/end timestamps and optional title/description
+     * @return {@code 200 OK} wrapping the new job's UUID for polling
+     * @throws IOException if reading the stream segments fails
+     */
     @PostMapping("/save")
     public ResponseEntity<APIResponse<UUIDResponse>> save(
             @RequestBody SaveSectionRequest saveSectionRequest) throws IOException {
@@ -55,6 +70,13 @@ public class MediaController {
         ));
     }
 
+    /**
+     * Starts an asynchronous job to save the section of the user's stream between two markers as a VoD.
+     *
+     * @param saveSectionByMarkerRequest the start/end marker IDs and optional title/description
+     * @return {@code 200 OK} wrapping the new job's UUID for polling
+     * @throws IOException if reading the stream segments fails
+     */
     @PostMapping("/save/markers")
     public ResponseEntity<APIResponse<UUIDResponse>> saveByMarkers(
             @Valid @RequestBody SaveSectionByMarkerRequest saveSectionByMarkerRequest) throws IOException {
@@ -70,6 +92,13 @@ public class MediaController {
         ));
     }
 
+    /**
+     * Starts an asynchronous job to save the last few seconds of the user's stream as a clip.
+     *
+     * @param clipSectionRequest the clip duration in seconds and optional title/description
+     * @return {@code 200 OK} wrapping the new job's UUID for polling
+     * @throws IOException if reading the stream segments fails
+     */
     @PostMapping("/clip")
     public ResponseEntity<APIResponse<UUIDResponse>> clip(
             @RequestBody ClipSectionRequest clipSectionRequest) throws IOException {

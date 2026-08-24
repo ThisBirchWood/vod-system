@@ -12,6 +12,11 @@ public class CorsConfig {
     @Value("${frontend.url}")
     private String frontendUrl;
 
+    /**
+     * Configures CORS for the API, allowing credentialed requests from the configured frontend origin.
+     *
+     * @return a {@link WebMvcConfigurer} that registers the CORS mappings for {@code /api/v1/**}
+     */
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {

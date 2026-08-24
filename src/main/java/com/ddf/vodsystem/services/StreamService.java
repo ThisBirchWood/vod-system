@@ -30,6 +30,14 @@ public class StreamService {
         this.userService = userService;
     }
 
+    /**
+     * Starts a new stream for the user identified by the given stream key.
+     *
+     * @param streamKey the stream key resolving to the broadcasting user
+     * @return the newly persisted {@link Stream}
+     * @throws KeyNotFound      if no user owns {@code streamKey}
+     * @throws AlreadyStreaming if the user already has an active stream
+     */
     public Stream startStream(String streamKey) {
         User user = resolveUser(streamKey);
 
@@ -45,6 +53,13 @@ public class StreamService {
         return streamRepository.saveAndFlush(stream);
     }
 
+    /**
+     * Ends the active stream for the user identified by the given stream key.
+     *
+     * @param streamKey the stream key resolving to the broadcasting user
+     * @throws KeyNotFound           if no user owns {@code streamKey}
+     * @throws IllegalStateException if the user has no active stream
+     */
     public void endStream(String streamKey) {
         User user = resolveUser(streamKey);
 
@@ -56,6 +71,13 @@ public class StreamService {
         streamRepository.saveAndFlush(stream);
     }
 
+    /**
+     * Records a liveness heartbeat on the active stream, refreshing its last-seen time.
+     *
+     * @param streamKey the stream key resolving to the broadcasting user
+     * @throws KeyNotFound           if no user owns {@code streamKey}
+     * @throws IllegalStateException if the user has no active stream
+     */
     public void heartbeatStream(String streamKey) {
         User user = resolveUser(streamKey);
 
@@ -67,6 +89,12 @@ public class StreamService {
         streamRepository.saveAndFlush(stream);
     }
 
+    /**
+     * Returns the current user's active (not-yet-ended) stream, if any.
+     *
+     * @return the active {@link Stream}, or empty if the user is not currently streaming
+     * @throws NotAuthenticated if no user session is present
+     */
     public Optional<Stream> getActiveStream() {
         Optional<User> user = userService.getLoggedInUser();
 
@@ -77,6 +105,14 @@ public class StreamService {
         return streamRepository.findByUserAndEndDateIsNull(user.get());
     }
 
+    /**
+     * Returns the full stream history for the given user.
+     *
+     * @param userId the ID of the user whose history to retrieve
+     * @return the user's streams, past and present
+     * @throws IllegalArgumentException if no user with {@code userId} exists
+     * @throws NotAuthenticated         if no user is authenticated, or the caller is not that user
+     */
     public List<Stream> getStreamHistory(Long userId) {
         User streamUser = userService.getUserById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -94,6 +130,12 @@ public class StreamService {
         return streamRepository.findByUser(streamUser);
     }
 
+    /**
+     * Scheduled sweep that ends streams which have missed heartbeats past the timeout.
+     * <p>
+     * Runs every 30 seconds; any active stream whose last heartbeat is older than
+     * {@value #HEARTBEAT_TIMEOUT_SECONDS} seconds is marked ended.
+     */
     @Scheduled(fixedDelay = 30_000)
     @Transactional
     public void endStaleStreams() {

@@ -20,6 +20,16 @@ public class ThumbnailService {
         this.commandRunner = commandRunner;
     }
 
+    /**
+     * Extracts a single frame from a video as a thumbnail image with ffmpeg on a background executor.
+     * <p>
+     * Runs asynchronously; failures complete the returned future exceptionally rather than throwing.
+     *
+     * @param inputFile   the source video file
+     * @param outputFile  the destination for the thumbnail image
+     * @param timeInVideo the timestamp in seconds at which to capture the frame
+     * @return a future completing with the ffmpeg output, or exceptionally on failure
+     */
     @Async("ffmpegTaskExecutor")
     public CompletableFuture<CommandOutput> createThumbnail(Path inputFile, Path outputFile, Float timeInVideo) {
         logger.info("Creating thumbnail at {} seconds", timeInVideo);

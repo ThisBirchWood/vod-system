@@ -24,6 +24,14 @@ public class StreamController {
         this.streamService = streamService;
     }
 
+    /**
+     * Starts a new stream for the user owning the given stream key.
+     * <p>
+     * Called by nginx via its {@code on_publish} RTMP callback when a broadcast begins.
+     *
+     * @param streamKey the RTMP stream key identifying the broadcasting user
+     * @return {@code 200 OK} wrapping the newly started {@link Stream}
+     */
     // Called by nginx on_publish
     @PostMapping("/start")
     public ResponseEntity<APIResponse<Stream>> startStream(@RequestParam("name") String streamKey) {
@@ -32,6 +40,14 @@ public class StreamController {
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Stream started", stream));
     }
 
+    /**
+     * Ends the active stream for the user owning the given stream key.
+     * <p>
+     * Called by nginx via its {@code on_publish_done} RTMP callback when a broadcast stops.
+     *
+     * @param streamKey the RTMP stream key identifying the broadcasting user
+     * @return {@code 200 OK} confirming the stream was ended
+     */
     // Called by nginx on_publish_done
     @PostMapping("/stop")
     public ResponseEntity<APIResponse<Void>> stopStream(@RequestParam("name") String streamKey) {
@@ -40,6 +56,14 @@ public class StreamController {
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Stream ended", null));
     }
 
+    /**
+     * Records a liveness heartbeat for the active stream, keeping it from being reaped as stale.
+     * <p>
+     * Called periodically by nginx via its {@code on_update} RTMP callback.
+     *
+     * @param streamKey the RTMP stream key identifying the broadcasting user
+     * @return {@code 200 OK} confirming the heartbeat was recorded
+     */
     // Called by nginx on_update
     @PostMapping("/heartbeat")
     public ResponseEntity<APIResponse<Void>> heartbeat(@RequestParam("name") String streamKey) {
@@ -47,12 +71,24 @@ public class StreamController {
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Heartbeat recorded", null));
     }
 
+    /**
+     * Retrieves the stream history for the given user.
+     *
+     * @param userId the ID of the user whose stream history to retrieve; must be the authenticated user
+     * @return {@code 200 OK} wrapping the user's past and current {@link Stream}s
+     */
     @GetMapping("/history/{userId}")
     public ResponseEntity<APIResponse<List<Stream>>> getStreamHistory(@PathVariable Long userId) {
         List<Stream> history = streamService.getStreamHistory(userId);
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Stream history retrieved", history));
     }
 
+    /**
+     * Reports whether the authenticated user is currently streaming.
+     *
+     * @return {@code 200 OK} wrapping a {@link StreamResponse} indicating the live status and, if live,
+     *         the active stream's ID
+     */
     @GetMapping("/current")
     public ResponseEntity<APIResponse<StreamResponse>> getCurrentStream() {
         Optional<Stream> stream = streamService.getActiveStream();

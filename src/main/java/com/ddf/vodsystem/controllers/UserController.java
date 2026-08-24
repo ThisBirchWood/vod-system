@@ -27,6 +27,12 @@ public class UserController {
         this.userService = userService;
     }
 
+    /**
+     * Returns the currently authenticated user's profile.
+     *
+     * @return {@code 200 OK} wrapping the authenticated {@link User}
+     * @throws NotAuthenticated if no valid session is present
+     */
     @GetMapping("/me")
     public ResponseEntity<APIResponse<User>> user() {
         Optional<User> user = userService.getLoggedInUser();
@@ -40,6 +46,17 @@ public class UserController {
         );
     }
 
+    /**
+     * Authenticates a user from a Google ID token and issues a session JWT.
+     * <p>
+     * The JWT is set as an HttpOnly {@code token} cookie (scoped by request security) and also
+     * returned in the response body.
+     *
+     * @param token    the payload carrying the Google ID token to verify
+     * @param request  the incoming request, used to decide cookie {@code Secure}/{@code SameSite} flags
+     * @param response the response the session cookie is written to
+     * @return {@code 200 OK} wrapping the issued JWT as a {@link Token}
+     */
     @PostMapping("/login")
     public ResponseEntity<APIResponse<Token>> login(@RequestBody Token token,
 		    				    HttpServletRequest request,
@@ -61,6 +78,13 @@ public class UserController {
         );
     }
 
+    /**
+     * Logs the user out by clearing the session cookie.
+     *
+     * @param response the response the expired cookie is written to
+     * @param request  the incoming request, used to match the original cookie's {@code Secure}/{@code SameSite} flags
+     * @return {@code 200 OK} confirming logout
+     */
     @PostMapping("/logout")
     public ResponseEntity<APIResponse<Void>> logout(HttpServletResponse response,
 		    				    HttpServletRequest request) {

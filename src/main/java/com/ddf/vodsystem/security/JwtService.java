@@ -26,6 +26,12 @@ public class JwtService {
         this.algorithm = Algorithm.HMAC256(jwtSecretKey);
     }
 
+    /**
+     * Generates a signed JWT carrying the given user ID, valid for the configured expiry.
+     *
+     * @param userId the user ID to embed as a claim
+     * @return the signed JWT string
+     */
     public String generateToken(Long userId) {
         return JWT.create()
                 .withClaim(USER_ID_CLAIM, userId)
@@ -34,6 +40,12 @@ public class JwtService {
                 .sign(algorithm);
     }
 
+    /**
+     * Verifies a JWT's signature, issuer, and expiry, returning the embedded user ID.
+     *
+     * @param token the JWT to validate
+     * @return the user ID claim if the token is valid and unexpired, otherwise {@code null}
+     */
     public Long validateTokenAndGetUserId(String token) {
         try {
             JWTVerifier verifier = JWT.require(algorithm)

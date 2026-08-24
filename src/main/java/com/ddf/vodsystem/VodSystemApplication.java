@@ -10,6 +10,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 public class VodSystemApplication {
 
+	/**
+	 * Application entry point; boots the Spring context.
+	 *
+	 * @param args command-line arguments passed to Spring Boot
+	 */
 	public static void main(String[] args) {
 		SpringApplication.run(VodSystemApplication.class, args);
 	}

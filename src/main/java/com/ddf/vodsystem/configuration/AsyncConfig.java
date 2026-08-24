@@ -14,6 +14,11 @@ import java.util.concurrent.Executor;
 public class AsyncConfig implements AsyncConfigurer {
     private static final Logger logger = LoggerFactory.getLogger(AsyncConfig.class);
 
+    /**
+     * Provides the bounded thread pool that runs ffmpeg-backed {@code @Async} media tasks.
+     *
+     * @return the configured {@link Executor} registered as {@code ffmpegTaskExecutor}
+     */
     @Bean(name = "ffmpegTaskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -25,6 +30,11 @@ public class AsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    /**
+     * Supplies the handler that logs uncaught exceptions from void-returning {@code @Async} methods.
+     *
+     * @return the async uncaught-exception handler
+     */
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (ex, method, params) ->

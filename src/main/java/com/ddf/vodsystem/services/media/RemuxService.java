@@ -21,6 +21,17 @@ public class RemuxService {
         this.commandRunner = commandRunner;
     }
 
+    /**
+     * Re-encodes a video to H.264/AAC in an MP4 container with ffmpeg on a background executor.
+     * <p>
+     * Runs asynchronously; failures complete the returned future exceptionally rather than throwing.
+     *
+     * @param inputFile     the source video file
+     * @param outputFile    the destination for the remuxed MP4
+     * @param remuxProgress the tracker updated as encoding progresses
+     * @param length        the media length in seconds, used to compute progress
+     * @return a future completing with the ffmpeg output, or exceptionally on failure
+     */
     @Async("ffmpegTaskExecutor")
     public CompletableFuture<CommandOutput> remux(File inputFile,
                                                   File outputFile,

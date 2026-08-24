@@ -26,6 +26,14 @@ public class MetadataService {
         this.commandRunner = commandRunner;
     }
 
+    /**
+     * Probes a video file with ffprobe and returns its metadata (duration, dimensions, fps, size).
+     * <p>
+     * Runs asynchronously; failures complete the returned future exceptionally rather than throwing.
+     *
+     * @param file the video file to probe
+     * @return a future completing with the parsed {@link ClipOptions}, or exceptionally on failure
+     */
     @Async("ffmpegTaskExecutor")
     public CompletableFuture<ClipOptions> getVideoMetadata(Path file) {
         logger.info("Getting metadata for file {}", file);

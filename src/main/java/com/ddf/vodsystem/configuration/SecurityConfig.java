@@ -22,6 +22,14 @@ public class SecurityConfig {
         this.jwtFilter = jwtFilter;
     }
 
+    /**
+     * Builds the security filter chain: stateless sessions, CSRF disabled, the {@link JwtFilter}
+     * installed, and per-endpoint authorization rules.
+     *
+     * @param http the HTTP security builder to configure
+     * @return the built {@link SecurityFilterChain}
+     * @throws Exception if the security configuration cannot be built
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

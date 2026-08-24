@@ -28,6 +28,13 @@ public class JobController {
         this.jobRegistryService = jobRegistryService;
     }
 
+    /**
+     * Retrieves the status and progress of an asynchronous job.
+     *
+     * @param uuid the UUID of the job to look up
+     * @return {@code 200 OK} wrapping the job's state as a {@link JobResponse} DTO
+     * @throws com.ddf.vodsystem.exceptions.JobNotFound if no job with {@code uuid} exists
+     */
     @GetMapping("/{uuid}")
     public ResponseEntity<APIResponse<JobResponse>> getJob(@PathVariable String uuid) {
         Job job = jobRegistryService.getJob(uuid);
@@ -47,6 +54,15 @@ public class JobController {
         ));
     }
 
+    /**
+     * Downloads the output file produced by a completed job.
+     *
+     * @param uuid the UUID of the job whose output to download
+     * @return {@code 200 OK} with the output file as a downloadable resource
+     * @throws com.ddf.vodsystem.exceptions.JobNotFound     if no job with {@code uuid} exists
+     * @throws NotReadyException if the job has not yet produced a downloadable file
+     * @throws ClipNotFound     if the job's output file no longer exists on disk
+     */
     @GetMapping("/{uuid}/download")
     public ResponseEntity<Resource> downloadJobFile(@PathVariable String uuid) {
         Job job = jobRegistryService.getJob(uuid);

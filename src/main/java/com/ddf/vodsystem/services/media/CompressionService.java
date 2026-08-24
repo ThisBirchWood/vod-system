@@ -27,6 +27,17 @@ public class CompressionService {
         this.commandRunner = commandRunner;
     }
 
+    /**
+     * Compresses (and optionally trims/rescales) a video with ffmpeg on a background executor.
+     * <p>
+     * Runs asynchronously; failures complete the returned future exceptionally rather than throwing.
+     *
+     * @param inputFile   the source video file
+     * @param outputFile  the destination for the compressed output
+     * @param clipOptions the trim window, target resolution/fps, and size driving the ffmpeg command
+     * @param progress    the tracker updated as encoding progresses
+     * @return a future completing with the ffmpeg output, or exceptionally on failure
+     */
     @Async("ffmpegTaskExecutor")
     public CompletableFuture<CommandOutput> compress(Path inputFile,
                                                      Path outputFile,

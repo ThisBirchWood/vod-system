@@ -24,6 +24,11 @@ public class ClipController {
         this.clipService = clipService;
     }
 
+    /**
+     * Lists all clips belonging to the authenticated user.
+     *
+     * @return {@code 200 OK} wrapping the user's clips as {@link ClipResponse} DTOs
+     */
     @GetMapping("")
     public ResponseEntity<APIResponse<List<ClipResponse>>> getClips() {
         List<Clip> clips = clipService.getClipsByUser();
@@ -39,6 +44,12 @@ public class ClipController {
         );
     }
 
+    /**
+     * Retrieves a single clip owned by the authenticated user.
+     *
+     * @param id the ID of the clip to retrieve
+     * @return {@code 200 OK} wrapping the clip as a {@link ClipResponse} DTO
+     */
     @GetMapping("/{id}")
     public ResponseEntity<APIResponse<ClipResponse>> getClipById(@PathVariable Long id) {
         Clip clip = clipService.getClipById(id);
@@ -52,6 +63,13 @@ public class ClipController {
         );
     }
 
+    /**
+     * Applies a partial update to a clip's metadata; null fields are left unchanged.
+     *
+     * @param id           the ID of the clip to update
+     * @param updateFields the title and/or description to overwrite
+     * @return {@code 200 OK} wrapping the updated clip as a {@link ClipResponse} DTO
+     */
     @PatchMapping("/{id}")
     public ResponseEntity<APIResponse<ClipResponse>> updateClip(@PathVariable Long id,
                                                            @RequestBody ClipUpdateRequest updateFields) {
@@ -63,6 +81,12 @@ public class ClipController {
         );
     }
 
+    /**
+     * Deletes a clip and its associated files.
+     *
+     * @param id the ID of the clip to delete
+     * @return {@code 200 OK} with a confirmation message
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<APIResponse<String>> deleteClip(@PathVariable Long id) {
         clipService.deleteClip(id);
@@ -76,6 +100,13 @@ public class ClipController {
         );
     }
 
+    /**
+     * Streams the clip's video file inline, supporting HTTP range requests.
+     *
+     * @param id the ID of the clip to download
+     * @return {@code 200 OK} with the video resource, or {@code 404 Not Found} if the file is missing
+     * @throws IOException if the resource's content length cannot be read
+     */
     @GetMapping(value = "/{id}/media", produces = MediaType.ALL_VALUE)
     public ResponseEntity<Resource> downloadClip(@PathVariable Long id) throws IOException {
         Resource resource = clipService.downloadClip(id);
@@ -93,6 +124,13 @@ public class ClipController {
                 .body(resource);
     }
 
+    /**
+     * Streams the clip's thumbnail image with a public cache policy.
+     *
+     * @param id the ID of the clip whose thumbnail to download
+     * @return {@code 200 OK} with the thumbnail resource, or {@code 404 Not Found} if the file is missing
+     * @throws IOException if the resource's last-modified time cannot be read
+     */
     @GetMapping("/{id}/thumbnail")
     public ResponseEntity<Resource> downloadThumbnail(@PathVariable Long id) throws IOException {
         Resource resource = clipService.downloadThumbnail(id);

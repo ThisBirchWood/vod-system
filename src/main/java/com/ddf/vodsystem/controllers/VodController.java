@@ -24,6 +24,11 @@ public class VodController {
         this.vodService = vodService;
     }
 
+    /**
+     * Lists all VoDs belonging to the authenticated user.
+     *
+     * @return {@code 200 OK} wrapping the user's VoDs as {@link VodResponse} DTOs
+     */
     @GetMapping("")
     public ResponseEntity<APIResponse<List<VodResponse>>> getVods() {
         List<VodResponse> vods = vodService.getUserVods().stream()
@@ -33,12 +38,25 @@ public class VodController {
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Vods retrieved successfully", vods));
     }
 
+    /**
+     * Retrieves a single VoD owned by the authenticated user.
+     *
+     * @param id the ID of the VoD to retrieve
+     * @return {@code 200 OK} wrapping the VoD as a {@link VodResponse} DTO
+     */
     @GetMapping("/{id}")
     public ResponseEntity<APIResponse<VodResponse>> getVodById(@PathVariable Long id) {
         VodResponse vod = convertToDTO(vodService.getVodById(id));
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Vod retrieved successfully", vod));
     }
 
+    /**
+     * Applies a partial update to a VoD's metadata; null fields are left unchanged.
+     *
+     * @param id           the ID of the VoD to update
+     * @param updateFields the title and/or description to overwrite
+     * @return {@code 200 OK} wrapping the updated VoD as a {@link VodResponse} DTO
+     */
     @PatchMapping("/{id}")
     public ResponseEntity<APIResponse<VodResponse>> updateVod(@PathVariable Long id,
                                                               @RequestBody VodUpdateRequest updateFields) {
@@ -46,6 +64,12 @@ public class VodController {
         return ResponseEntity.ok(new APIResponse<>(SUCCESS, "Vod updated successfully", vod));
     }
 
+    /**
+     * Deletes a VoD and its associated files.
+     *
+     * @param id the ID of the VoD to delete
+     * @return {@code 200 OK} with a confirmation message
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<APIResponse<String>> deleteVod(@PathVariable Long id) {
         vodService.deleteVod(id);
@@ -53,6 +77,13 @@ public class VodController {
                 "Vod with ID " + id + " has been deleted"));
     }
 
+    /**
+     * Streams the VoD's video file inline, supporting HTTP range requests.
+     *
+     * @param id the ID of the VoD to download
+     * @return {@code 200 OK} with the video resource, or {@code 404 Not Found} if the file is missing
+     * @throws IOException if the resource's content length cannot be read
+     */
     @GetMapping(value = "/{id}/media", produces = MediaType.ALL_VALUE)
     public ResponseEntity<Resource> downloadVod(@PathVariable Long id) throws IOException {
         Resource resource = vodService.downloadVod(id);
@@ -70,6 +101,13 @@ public class VodController {
                 .body(resource);
     }
 
+    /**
+     * Streams the VoD's thumbnail image with a public cache policy.
+     *
+     * @param id the ID of the VoD whose thumbnail to download
+     * @return {@code 200 OK} with the thumbnail resource, or {@code 404 Not Found} if the file is missing
+     * @throws IOException if the resource's last-modified time cannot be read
+     */
     @GetMapping("/{id}/thumbnail")
     public ResponseEntity<Resource> downloadThumbnail(@PathVariable Long id) throws IOException {
         Resource resource = vodService.downloadThumbnail(id);

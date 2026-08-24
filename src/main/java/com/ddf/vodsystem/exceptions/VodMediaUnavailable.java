@@ -12,6 +12,11 @@ public class VodMediaUnavailable extends RuntimeException {
     this.vodId = vodId;
   }
 
+  /**
+   * Returns the ID of the VoD whose media was unavailable.
+   *
+   * @return the affected VoD's ID
+   */
   public Long getVodId() {
     return vodId;
   }
