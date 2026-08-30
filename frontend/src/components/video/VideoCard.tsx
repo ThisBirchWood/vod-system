@@ -65,7 +65,7 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                         className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-200"
                     />
 
-                    <span className="absolute top-1.5 left-1.5 bg-text-primary/75 text-on-dark px-1.5 py-0.5 rounded text-xs font-data pointer-events-none">
+                    <span className="absolute top-1.5 left-1.5 bg-media-backdrop/75 text-on-dark px-1.5 py-0.5 rounded text-xs font-data pointer-events-none">
                         {formatTime(duration)}
                     </span>
 
@@ -77,7 +77,7 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
                         >
                             <button
                                 onClick={(e) => stopAndRun(e, () => { setMenuOpen(v => !v); setConfirmDelete(false); })}
-                                className="bg-text-primary/75 hover:bg-text-primary/90 text-on-dark rounded p-0.5 transition-colors"
+                                className="bg-media-backdrop/75 hover:bg-media-backdrop/90 text-on-dark rounded p-0.5 transition-colors"
                             >
                                 <MoreVertical size={14} />
                             </button>

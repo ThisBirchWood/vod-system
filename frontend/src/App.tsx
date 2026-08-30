@@ -18,6 +18,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import {config} from "./config.ts";
  import NotFound from "./pages/NotFound.tsx";
 import AuthProvider from "./auth/AuthProvider.tsx";
+import ThemeProvider from "./theme/ThemeProvider.tsx";
 
 
 function App() {
@@ -27,26 +28,28 @@ function App() {
 
     return (
         <GoogleOAuthProvider clientId={config.googleClientId}>
-            <AuthProvider>
-                <Router>
-                        <Routes>
-                        <Route element={<MainLayout />}>
-                            <Route path="/" element={<Home />} />
-                            <Route path="/create" element={<ClipUpload />} />
-                            <Route path="/create/:id" element={<ClipEdit />} />
-                            <Route path="/my-clips" element={<MyClips />} />
-                            <Route path="/my-vods" element={<MyVods />} />
-                            <Route path="/video/:id" element={<MediaPlayer noun="Clip" getMediaUrl={getClipMediaUrl} fetchDetails={getClipById} />} />
-                            <Route path="/vod/:id" element={<MediaPlayer noun="VoD" getMediaUrl={getVodMediaUrl} fetchDetails={getVodById} />} />
-                            <Route path="/clips/:id/edit" element={<EditClip />} />
-                            <Route path="/vods/:id/edit" element={<EditVod />} />
-                            <Route path="/profile" element={<Profile />} />
-                            <Route path="/stream" element={<StreamControl />} />
-                            <Route path="*" element={<NotFound />} />
-                        </Route>
-                    </Routes>
-                </Router>
-            </AuthProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <Router>
+                            <Routes>
+                            <Route element={<MainLayout />}>
+                                <Route path="/" element={<Home />} />
+                                <Route path="/create" element={<ClipUpload />} />
+                                <Route path="/create/:id" element={<ClipEdit />} />
+                                <Route path="/my-clips" element={<MyClips />} />
+                                <Route path="/my-vods" element={<MyVods />} />
+                                <Route path="/video/:id" element={<MediaPlayer noun="Clip" getMediaUrl={getClipMediaUrl} fetchDetails={getClipById} />} />
+                                <Route path="/vod/:id" element={<MediaPlayer noun="VoD" getMediaUrl={getVodMediaUrl} fetchDetails={getVodById} />} />
+                                <Route path="/clips/:id/edit" element={<EditClip />} />
+                                <Route path="/vods/:id/edit" element={<EditVod />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/stream" element={<StreamControl />} />
+                                <Route path="*" element={<NotFound />} />
+                            </Route>
+                        </Routes>
+                    </Router>
+                </AuthProvider>
+            </ThemeProvider>
         </ GoogleOAuthProvider>
     );
 }

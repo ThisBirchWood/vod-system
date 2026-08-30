@@ -233,7 +233,7 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
             {/* Player */}
             <div
                 ref={containerRef}
-                className="relative bg-text-primary rounded-xl overflow-hidden flex-1 min-h-0 select-none"
+                className="relative bg-media-backdrop rounded-xl overflow-hidden flex-1 min-h-0 select-none"
                 onMouseMove={showControls}
                 onMouseLeave={() => isPlaying && setControlsVisible(false)}
                 onClick={togglePlay}

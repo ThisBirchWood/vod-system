@@ -135,7 +135,7 @@ const ClipEdit = () => {
             <video
                 ref={videoRef}
                 src={videoUrl}
-                className={"w-full rounded-lg shadow-sm bg-text-primary"}
+                className={"w-full rounded-lg shadow-sm bg-media-backdrop"}
                 onLoadedMetadata={handleVideoMetadataLoaded}
             />
 

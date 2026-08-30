@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Drive the `dark:` variant off the same data-theme attribute the toggle sets,
+   instead of Tailwind's default prefers-color-scheme. Without this a stray
+   `dark:` utility would disagree with an explicit light/dark choice. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
     /* ── Fonts ───────────────────────────────────────────────────────────── */
     --font-body: "IBM Plex Sans", system-ui, sans-serif;
@@ -11,6 +16,10 @@
     --color-card: #FDFBF7;
     --color-fields: #F4F0E8;
     --color-dropzone: #F9F6EF;
+
+    /* Letterbox behind video. Dark in both themes — it is a cinema surface,
+       not an ink colour — so `text-on-dark` always reads on top of it. */
+    --color-media-backdrop: #2B2620;
 
     /* ── Ink ─────────────────────────────────────────────────────────────── */
     --color-text-primary: #2B2620;
@@ -44,6 +53,55 @@
     --color-inactive-strong: #C4BAA9;
 }
 
+/* Dark mode. Only token values change here: every component already styles
+   itself with the semantic utilities above, so the whole UI follows from this
+   one block. `--color-on-dark` is deliberately absent — it is the ink on the
+   media backdrop, which stays dark in both themes. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* ── Surfaces ── elevation inverts: the canvas is darkest, cards rise ─── */
+    --color-background: #1B1815;
+    --color-sidebar: #151210;
+    --color-card: #26211C;
+    --color-fields: #211D19;
+    --color-dropzone: #201C18;
+
+    --color-media-backdrop: #121010;
+
+    /* ── Ink ── warm off-whites, mirroring the light ramp in reverse ──────── */
+    --color-text-primary: #F3EDE3;
+    --color-text-strong: #E6DFD3;
+    --color-text-body: #CFC6B8;
+    --color-text-secondary: #ABA192;
+    --color-muted: #948A7C;
+    --color-faint-mono: #8A8073;
+
+    /* ── Accents ── brightened to carry on a dark canvas, so hover now lifts
+       rather than deepens ─────────────────────────────────────────────────── */
+    --color-terracotta: #D08055;
+    --color-terracotta-hover: #E09A6F;
+    --color-terracotta-light: #E3A87F;
+    --color-terracotta-disabled: #8A6A55;
+    --color-olive: #9DAC77;
+
+    /* ── Status ──────────────────────────────────────────────────────────── */
+    --color-live: #E0705A;
+    --color-error: #E0705A;
+
+    /* ── Ink on accent surfaces ── the accents are light here, so the ink that
+       sits on them flips dark ─────────────────────────────────────────────── */
+    --color-on-accent: #241B14;
+
+    /* ── Lines, chips, placeholders ──────────────────────────────────────── */
+    --color-hairline: #2E2822;
+    --color-hover: #322B24;
+    --color-selected: #2E2119;
+    --color-ring: #3E362C;
+    --color-inactive: #3B342B;
+    --color-inactive-strong: #6B6153;
+}
+
 :root {
     font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
@@ -52,6 +110,7 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light;
 }
 
 body {
@@ -64,6 +123,16 @@ body {
     font-family: "Newsreader", serif;
     font-weight: 400;
     color: var(--color-text-primary);
+}
+
+/* Google Identity Services renders its sign-in button in a cross-origin iframe
+   whose document is light-scheme with a transparent background. Left to inherit
+   our `color-scheme: dark`, Chrome cannot honour dark there and paints an opaque
+   white canvas behind it instead — framing the pill in a white box on every dark
+   page. Pinning the iframe back to light keeps it transparent; the button's own
+   colours come from the `theme` prop in Topbar.tsx. */
+iframe[src*="accounts.google.com/gsi/"] {
+    color-scheme: light;
 }
 
 /* Clip trim slider (react-range-slider-input). Its own stylesheet ships blue

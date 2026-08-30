@@ -1,4 +1,4 @@
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { Dropdown, DropdownItem } from "./Dropdown.tsx";
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -8,6 +8,7 @@ import MenuButton from "./buttons/MenuButton.tsx";
 import clsx from "clsx";
 import {useNavigate} from "react-router-dom";
 import { useAuth } from "../auth/useAuth.ts";
+import { useTheme } from "../theme/useTheme.ts";
 
 
 type props = {
@@ -25,6 +26,7 @@ const Topbar = ({
 
     const navigate = useNavigate();
     const { user, login, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
 
     const handleLogin = (response: CredentialResponse) => {
         if (!response.credential) {
@@ -37,6 +39,8 @@ const Topbar = ({
                 console.error("Login failed:", error);
             });
     }
+
+    const themeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
     const handleLogout = () => {
         logout()
@@ -52,7 +56,16 @@ const Topbar = ({
                 {sidebarToggled ? <Menu size={24}/> :  <X size={24}/>}
             </MenuButton>
 
-            { user ? (
+            <div className="flex items-center gap-1">
+                <MenuButton
+                    onClick={toggleTheme}
+                    title={themeLabel}
+                    aria-label={themeLabel}
+                >
+                    {theme === "dark" ? <Sun size={20}/> : <Moon size={20}/>}
+                </MenuButton>
+
+                { user ? (
                 <div className={"hover:bg-hover rounded-lg p-0.5"}>
                     <img
                         className={"w-8 h-8 rounded-full inline-block"}
@@ -78,13 +91,15 @@ const Topbar = ({
                                       className={"text-error font-medium"} />
                     </Dropdown>
                 </div>
-            ) :
-            (
+                ) :
+                (
                 <GoogleLogin
                     shape={"pill"}
+                    theme={theme === "dark" ? "filled_black" : "outline"}
                     useOneTap={false}
                     onSuccess={(credentialResponse) => handleLogin(credentialResponse)} />
-            )}
+                )}
+            </div>
         </div>
     )
 }
