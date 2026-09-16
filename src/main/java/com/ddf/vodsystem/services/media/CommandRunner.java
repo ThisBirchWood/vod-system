@@ -76,8 +76,9 @@ public class CommandRunner {
     public void setProgress(String line, ProgressTracker progress, float length) {
         Matcher matcher = timePattern.matcher(line);
         if (matcher.find()) {
-            float timeInMs = Float.parseFloat(matcher.group(1)) / 1000000f;
-            progress.setProgress(timeInMs / length);
+            float timeInSeconds = Float.parseFloat(matcher.group(1)) / 1_000_000f;
+            float fraction = Math.clamp(timeInSeconds / length, 0f, 1f);
+            progress.setProgress(fraction);
         }
     }
 }
