@@ -1,6 +1,6 @@
-FROM tiangolo/nginx-rtmp
+FROM tiangolo/nginx-rtmp:latest-2026-09-07
 
-RUN apt-get update && \
+RUN apt-get update -o Acquire::Check-Valid-Until=false && \
     apt-get install -y --no-install-recommends gettext-base && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

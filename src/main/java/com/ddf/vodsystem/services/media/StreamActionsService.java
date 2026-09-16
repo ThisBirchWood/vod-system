@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -42,13 +43,14 @@ public class StreamActionsService {
      * A resolved section of a stream, ready to be muxed by {@link #saveSection}.
      *
      * @param segments   the segments to concatenate, in playback order; never empty
-     * @param trimOffset seconds to trim from the start of {@code segments.getFirst()}
-     *                   so playback begins at the requested moment, or {@code 0}
-     *                   when the first segment already starts there
-     * @param duration   seconds of footage to keep, measured from the trim point.
-     *                   When the requested start fell in a recording gap and the
-     *                   leading segment was dropped, this is measured from the
-     *                   later real start so the section still ends where requested
+     * @param trimOffset seconds between the start of {@code segments.getFirst()} and
+     *                   the requested start, or {@code 0} when the first segment
+     *                   already starts there. Segments are copied whole, so this is
+     *                   lead-in the section carries before the requested moment, not
+     *                   footage that gets trimmed away
+     * @param duration   seconds of footage to keep, measured from the start of
+     *                   {@code segments.getFirst()} so the section ends at the
+     *                   requested end time with the lead-in included
      */
     public record SegmentSelection(List<Path> segments, float trimOffset, float duration) {}
 
@@ -78,8 +80,6 @@ public class StreamActionsService {
         long firstMs = parseTimestampMs(segments.getFirst());
         float trimOffset = Math.max(0f, (startTime.toEpochMilli() - firstMs) / 1000f);
 
-        // A first segment shorter than the trim offset means the requested start
-        // lands in a gap after it; drop it and begin at the next recorded footage.
         if (trimOffset > 0 && probeDurationSeconds(segments.getFirst()) < trimOffset) {
             segments.removeFirst();
             if (segments.isEmpty()) {
@@ -89,18 +89,19 @@ public class StreamActionsService {
             trimOffset = 0f;
         }
 
-        // Measure duration from where playback actually begins so a dropped
-        // leading segment shortens the section rather than overrunning endTime.
-        long effectiveStartMs = firstMs + (long) (trimOffset * 1000);
-        float duration = (endTime.toEpochMilli() - effectiveStartMs) / 1000f;
 
+        float duration = (endTime.toEpochMilli() - firstMs) / 1000f;
         return new SegmentSelection(segments, trimOffset, duration);
     }
 
     /**
-     * Muxes a {@link SegmentSelection} to {@code outputFile}, trimming the leading
-     * segment to {@code selection.trimOffset()} and keeping {@code selection.duration()}
-     * seconds of footage.
+     * Muxes a {@link SegmentSelection} to {@code outputFile}, keeping
+     * {@code selection.duration()} seconds of footage.
+     * <p>
+     * Segments are concatenated byte-wise through ffmpeg's {@code concat:} protocol,
+     * which preserves the continuous timestamps nginx writes across fragments. The
+     * leading segment is copied whole rather than trimmed, so playback begins up to
+     * {@code selection.trimOffset()} seconds before the requested moment.
      * <p>
      * Runs asynchronously; failures (process-launch errors, ffmpeg failures,
      * interruption) complete the returned future exceptionally rather than being
@@ -131,37 +132,19 @@ public class StreamActionsService {
                     "trimOffset must be >= 0 and duration must be > 0 (got " + trimOffset + ", " + duration + ")"));
         }
 
-        Path headFragment = null;
-        Path concatList = null;
         try {
-            // Only the first segment is trimmed, so re-encode just that fragment and
-            // stream-copy the rest. A zero offset means the first segment already
-            // starts at the requested point, so re-encoding it would be wasted work.
-            List<Path> fragments;
-            if (trimOffset > 0) {
-                headFragment = Files.createTempFile("reencode-section-", ".ts");
-                encodeHead(segments.getFirst(), trimOffset, headFragment);
-
-                fragments = new ArrayList<>();
-                fragments.add(headFragment);
-                fragments.addAll(segments.subList(1, segments.size()));
-            } else {
-                fragments = segments;
-            }
-
-            // The concat demuxer (unlike the concat: byte protocol) rebases each
-            // fragment's timestamps to run continuously across the joins, absorbing
-            // the discontinuity between the PTS-0 head and the copied fragments.
-            concatList = writeConcatList(fragments);
+            String concatInput = "concat:" + segments.stream()
+                    .map(p -> p.toAbsolutePath().toString())
+                    .collect(Collectors.joining("|"));
 
             List<String> command = List.of(
                     "ffmpeg",
                     "-y",
-                    "-f", "concat",
-                    "-safe", "0",
-                    "-i", concatList.toAbsolutePath().toString(),
+                    "-progress",  "pipe:1",
+                    "-i", concatInput,
                     "-t", String.valueOf(duration),
                     "-c", "copy",
+                    "-avoid_negative_ts", "make_zero",
                     outputFile.toAbsolutePath().toString()
             );
 
@@ -180,9 +163,6 @@ public class StreamActionsService {
         } catch (RuntimeException e) {
             logger.error("Failed to save section to '{}': {}", outputFile, e.toString());
             return CompletableFuture.failedFuture(e);
-        } finally {
-            deleteTempQuietly(headFragment);
-            deleteTempQuietly(concatList);
         }
     }
 
@@ -255,54 +235,6 @@ public class StreamActionsService {
             throw new IOException("Interrupted while probing segment duration: " + segment, e);
         } catch (ExecutionException e) {
             throw new IOException("Failed to probe segment duration: " + segment, e);
-        }
-    }
-
-    private void encodeHead(Path firstSegment, float trimOffset, Path head)
-            throws IOException, InterruptedException {
-
-        List<String> command = List.of(
-                "ffmpeg",
-                "-y",
-                "-i", firstSegment.toAbsolutePath().toString(),
-                "-ss", String.valueOf(trimOffset),
-                "-c:v", "libx264",
-                "-preset", "veryfast",
-                "-crf", "20",
-                "-pix_fmt", "yuv420p",
-                "-c:a", "aac",
-                "-b:a", "160k",
-                "-muxdelay", "0",
-                "-muxpreload", "0",
-                "-f", "mpegts",
-                head.toAbsolutePath().toString()
-        );
-
-        logger.debug("Re-encoding head fragment '{}' from {}s", firstSegment, trimOffset);
-        commandRunner.run(command, line -> { /* head pass is short; no progress reporting */ });
-
-        if (!Files.exists(head) || Files.size(head) == 0) {
-            throw new IOException("Head re-encode produced no output — trimOffset " + trimOffset
-                    + "s may exceed the duration of " + firstSegment);
-        }
-    }
-
-    private Path writeConcatList(List<Path> fragments) throws IOException {
-        Path listFile = Files.createTempFile("concat-list-", ".txt");
-        List<String> lines = fragments.stream()
-                .map(p -> "file '" + p.toAbsolutePath().toString().replace("'", "'\\''") + "'")
-                .toList();
-        Files.write(listFile, lines);
-        return listFile;
-    }
-
-    private void deleteTempQuietly(Path tempFile) {
-        if (tempFile != null) {
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException e) {
-                logger.warn("Failed to delete temp file '{}': {}", tempFile, e.toString());
-            }
         }
     }
 }

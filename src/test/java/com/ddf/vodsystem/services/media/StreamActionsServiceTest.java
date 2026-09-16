@@ -57,23 +57,6 @@ class StreamActionsServiceTest {
         when(metadataService.getVideoMetadata(any())).thenReturn(CompletableFuture.completedFuture(meta));
     }
 
-    /**
-     * Stubs the two-arg {@link CommandRunner#run} so the head re-encode pass
-     * actually writes a non-empty file at its output path — {@code encodeHead}
-     * verifies its output exists and is non-empty before continuing. The concat
-     * pass (no {@code mpegts} muxer) is left untouched. Returns {@code output}
-     * for both invocations.
-     */
-    private void stubRunnerProducingHead(CommandOutput output) throws IOException, InterruptedException {
-        when(commandRunner.run(anyList(), any())).thenAnswer(inv -> {
-            List<String> cmd = inv.getArgument(0);
-            if (cmd.contains("mpegts")) {
-                Files.writeString(Path.of(cmd.getLast()), "x");
-            }
-            return output;
-        });
-    }
-
     // ---------------------------------------------------------------
     // selectSegments: missing / invalid directories
     // ---------------------------------------------------------------
@@ -247,8 +230,10 @@ class StreamActionsServiceTest {
         assertThat(selection.segments()).extracting(p -> p.getFileName().toString())
                 .containsExactly("30.ts", "33.ts");
         assertThat(selection.trimOffset()).isEqualTo(1.5f);
-        // effective start equals the requested 31.5s, so duration runs to endTime: 40 - 31.5
-        assertThat(selection.duration()).isEqualTo(8.5f);
+        // 30.ts is copied whole, so the section starts at 30s rather than the
+        // requested 31.5s; duration runs from there to endTime: 40 - 30. The
+        // 1.5s trimOffset is carried as lead-in, not cut away.
+        assertThat(selection.duration()).isEqualTo(10f);
     }
 
     @Test
@@ -355,7 +340,7 @@ class StreamActionsServiceTest {
         ProgressTracker progress = new ProgressTracker();
         CommandOutput commandOutput = new CommandOutput();
 
-        stubRunnerProducingHead(commandOutput);
+        when(commandRunner.run(anyList(), any())).thenReturn(commandOutput);
 
         var future = service.saveSection(
                 new StreamActionsService.SegmentSelection(List.of(segmentA, segmentB), 5.0f, 12.0f), output, progress);
@@ -363,24 +348,29 @@ class StreamActionsServiceTest {
         assertThat(future.get()).isSameAs(commandOutput);
         assertThat(progress.isComplete()).isTrue();
 
-        // With a non-zero trim offset saveSection issues two ffmpeg passes: the
-        // head re-encode (trims the first segment via -ss) followed by the
-        // concat-demuxer stream copy (-f concat / -t / -c copy).
+        // The section is one stream-copy pass over the byte-concatenated segments:
+        // the concat: protocol joins them without rebasing the timestamps nginx
+        // wrote across fragments, which is what keeps the joins seamless.
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> captor = ArgumentCaptor.forClass(List.class);
-        Mockito.verify(commandRunner, Mockito.times(2)).run(captor.capture(), any());
-        List<String> headCommand = captor.getAllValues().get(0);
-        List<String> concatCommand = captor.getAllValues().get(1);
+        Mockito.verify(commandRunner, Mockito.times(1)).run(captor.capture(), any());
+        List<String> command = captor.getValue();
 
-        assertThat(headCommand).containsSequence("-ss", "5.0");
-        assertThat(concatCommand).containsSequence("-f", "concat");
-        assertThat(concatCommand).containsSequence("-t", "12.0");
-        assertThat(concatCommand).containsSequence("-c", "copy");
-        assertThat(concatCommand).endsWith(output.toAbsolutePath().toString());
+        assertThat(command).containsSequence(
+                "-i", "concat:" + segmentA.toAbsolutePath() + "|" + segmentB.toAbsolutePath());
+        assertThat(command).containsSequence("-t", "12.0");
+        assertThat(command).containsSequence("-c", "copy");
+        assertThat(command).containsSequence("-avoid_negative_ts", "make_zero");
+        assertThat(command).endsWith(output.toAbsolutePath().toString());
+
+        // The leading segment is copied whole, so nothing seeks and the concat
+        // demuxer (-f concat) is deliberately not used.
+        assertThat(command).doesNotContain("-ss");
+        assertThat(command).doesNotContainSequence("-f", "concat");
     }
 
     @Test
-    void saveSection_zeroTrimOffset_skipsHeadReencodeAndRunsSingleConcatPass() throws Exception {
+    void saveSection_zeroTrimOffset_buildsTheSameSingleCopyPass() throws Exception {
         Path output = Path.of("/tmp/out/clip.mp4");
         ProgressTracker progress = new ProgressTracker();
         CommandOutput commandOutput = new CommandOutput();
@@ -394,14 +384,14 @@ class StreamActionsServiceTest {
         assertThat(future.get()).isSameAs(commandOutput);
         assertThat(progress.isComplete()).isTrue();
 
-        // trimOffset 0 means the first segment already starts at the requested point:
-        // no head re-encode pass, just a single concat-demuxer copy (no -ss).
+        // trimOffset no longer changes the command shape: with or without lead-in
+        // the section is the same single copy pass over the joined segments.
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<String>> captor = ArgumentCaptor.forClass(List.class);
         Mockito.verify(commandRunner, Mockito.times(1)).run(captor.capture(), any());
         List<String> command = captor.getValue();
 
-        assertThat(command).containsSequence("-f", "concat");
+        assertThat(command).containsSequence("-i", "concat:/tmp/a.ts|/tmp/b.ts");
         assertThat(command).containsSequence("-t", "10.0");
         assertThat(command).doesNotContain("-ss");
     }
@@ -411,8 +401,7 @@ class StreamActionsServiceTest {
         Path output = Path.of("/tmp/out/clip.mp4");
         ProgressTracker progress = new ProgressTracker();
 
-        // With a non-zero trim offset the head re-encode is the first ffmpeg pass;
-        // its failure must surface.
+        // The copy pass is the only ffmpeg invocation, so its failure must surface.
         when(commandRunner.run(anyList(), any())).thenThrow(new IOException("ffmpeg boom"));
 
         var future = service.saveSection(
@@ -442,8 +431,8 @@ class StreamActionsServiceTest {
     void saveSection_nullOutputFile_completesExceptionally() {
         ProgressTracker progress = new ProgressTracker();
 
-        // trimOffset 0 skips the head pass; building the concat command dereferences
-        // the null output path, so no ffmpeg pass ever runs.
+        // Building the command dereferences the null output path, so no ffmpeg
+        // pass ever runs.
         var future = service.saveSection(
                 new StreamActionsService.SegmentSelection(List.of(Path.of("/tmp/a.ts")), 0f, 10f), null, progress);
 

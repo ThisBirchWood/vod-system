@@ -239,7 +239,7 @@ public class MediaService {
                 onSuccess.run();
             }).exceptionally(ex -> {
                 job.setState(JobState.FAILED);
-                job.setErrorOutput(ex.getMessage());
+                job.setErrorOutput("FFMPEG failed to save stream segments");
                 logger.error("Stream save job {} failed: {}", job.getUuid(), ex.getMessage());
                 return null;
             });
