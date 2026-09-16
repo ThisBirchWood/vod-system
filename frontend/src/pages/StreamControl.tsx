@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Radio, Check, Bookmark, Scissors, Film, Activity, Loader2, X } from "lucide-react";
+import { Radio, Check, Scissors, Film, Activity, Loader2, X } from "lucide-react";
 import clsx from "clsx";
 import Box from "../components/Box.tsx";
+import CardHeader from "../components/CardHeader.tsx";
+import MarkerList from "../components/stream/MarkerList.tsx";
 import PrimaryButton from "../components/buttons/PrimaryButton.tsx";
 import { useAuth } from "../auth/useAuth.ts";
 import { getCurrentStream, getStreamHistory } from "../utils/api/stream.ts";
@@ -9,7 +11,7 @@ import { getMarkers, createMarker, deleteMarker } from "../utils/api/markers.ts"
 import { saveSectionByMarkers, clipSection } from "../utils/api/media.ts";
 import { getJob } from "../utils/api/jobs.ts";
 import type { StreamStatus, StreamHistoryItem, Marker, JobResponse } from "../utils/types.ts";
-import { formatTime, formatLocalDate, stringToDate } from "../utils/utils.ts";
+import { formatLocalDate, stringToDate } from "../utils/utils.ts";
 
 const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 const labelClass = "font-data text-[11px] text-muted uppercase tracking-[0.12em]";
@@ -21,15 +23,6 @@ type TrackedJob = {
     state: JobResponse['state'];
     errorOutput: string | null;
 };
-
-const CardHeader = ({ icon: Icon, title, accent = "primary" }: { icon: React.ElementType; title: string; accent?: "primary" | "accent" }) => (
-    <div className="flex items-center gap-2.5">
-        <div className={clsx("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", accent === "primary" ? "bg-terracotta/10" : "bg-olive/10")}>
-            <Icon size={16} className={accent === "primary" ? "text-terracotta" : "text-olive"} />
-        </div>
-        <h2 className="text-xl font-heading text-text-primary">{title}</h2>
-    </div>
-);
 
 const JobStatus = ({ job }: { job: TrackedJob }) => {
     if (job.state === 'FAILED') {
@@ -63,11 +56,8 @@ const StreamControl = () => {
     const { user } = useAuth();
     const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
     const [streamDetails, setStreamDetails] = useState<StreamHistoryItem | null>(null);
-    const [now, setNow] = useState(Date.now());
 
     const [markers, setMarkers] = useState<Marker[]>([]);
-    const [markerMessage, setMarkerMessage] = useState("");
-    const [markerBusy, setMarkerBusy] = useState(false);
     const [markerError, setMarkerError] = useState<string | null>(null);
 
     const [clipDuration, setClipDuration] = useState(30);
@@ -103,16 +93,10 @@ const StreamControl = () => {
             .catch(() => {});
     }, [user, streamStatus?.id]);
 
-    useEffect(() => {
-        if (!streamDetails?.startDate) return;
-        const interval = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(interval);
-    }, [streamDetails?.startDate]);
-
     const refreshMarkers = () => {
         getMarkers()
             .then((data) => setMarkers(data
-                .sort((a, b) => stringToDate(a.timestamp).getTime() - stringToDate(b.timestamp).getTime())))
+                .sort((a, b) => stringToDate(b.timestamp).getTime() - stringToDate(a.timestamp).getTime())))
             .catch(() => {});
     };
 
@@ -149,18 +133,15 @@ const StreamControl = () => {
         setJobs((prev) => [{ uuid, label, progress: 0, state: 'READY', errorOutput: null }, ...prev]);
     };
 
-    const handleAddMarker = async () => {
-        if (!markerMessage.trim() || markerBusy) return;
-        setMarkerBusy(true);
+    const handleAddMarker = async (message: string) => {
         setMarkerError(null);
         try {
-            await createMarker(markerMessage.trim());
-            setMarkerMessage("");
+            await createMarker(message);
             refreshMarkers();
+            return true;
         } catch (err) {
             setMarkerError(err instanceof Error ? err.message : "Failed to add marker");
-        } finally {
-            setMarkerBusy(false);
+            return false;
         }
     };
 
@@ -179,7 +160,7 @@ const StreamControl = () => {
     const handleSaveByMarkers = async () => {
         setMarkerSaveError(null);
         if (!startMarkerId || !endMarkerId) {
-            setMarkerSaveError("Tap two markers above to pick a start and end");
+            setMarkerSaveError("Pick a start and an end marker from the timeline");
             return;
         }
         try {
@@ -210,7 +191,7 @@ const StreamControl = () => {
         }
     };
 
-    const handleChipClick = (id: number) => {
+    const handleSelectMarker = (id: number) => {
         const idStr = String(id);
         setMarkerSaveError(null);
         if (startMarkerId === idStr) { setStartMarkerId(""); return; }
@@ -227,10 +208,6 @@ const StreamControl = () => {
             </div>
         );
     }
-
-    const elapsed = streamDetails?.startDate
-        ? formatTime((now - stringToDate(streamDetails.startDate).getTime()) / 1000)
-        : null;
 
     const startMarker = markers.find((m) => String(m.id) === startMarkerId);
     const endMarker = markers.find((m) => String(m.id) === endMarkerId);
@@ -259,97 +236,30 @@ const StreamControl = () => {
                     </div>
                 </div>
 
-                {isStreaming && elapsed ? (
-                    <div className="text-right">
-                        <p className="text-2xl font-data text-text-primary tabular-nums">{elapsed}</p>
-                        <p className={labelClass}>elapsed</p>
-                    </div>
-                ) : (
-                    <Radio size={28} className="text-inactive" />
-                )}
+                <Radio size={28} className={isStreaming ? "text-live" : "text-inactive"} />
             </Box>
 
             {isStreaming && (
-                <>
-                    {/* Quick mark toolbar */}
-                    <Box className="p-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                            <Bookmark size={18} className="text-olive flex-shrink-0" />
-                            <input
-                                type="text"
-                                value={markerMessage}
-                                onChange={(e) => setMarkerMessage(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleAddMarker()}
-                                placeholder="What just happened?"
-                                className={inputClass}
-                            />
-                            <PrimaryButton onClick={handleAddMarker} disabled={markerBusy || !markerMessage.trim()} className="whitespace-nowrap">
-                                Add Marker
-                            </PrimaryButton>
-                        </div>
-                        {markerError && <p className="text-sm text-error">{markerError}</p>}
-
-                        {markers.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 pt-1.5">
-                                {markers.map((m) => {
-                                    const isStart = startMarkerId === String(m.id);
-                                    const isEnd = endMarkerId === String(m.id);
-                                    return (
-                                        <div key={m.id} className="group relative flex-shrink-0">
-                                            <button
-                                                onClick={() => handleChipClick(m.id)}
-                                                className={clsx(
-                                                    "flex flex-col items-start gap-0.5 rounded-lg border px-3 py-1.5 text-left transition-colors duration-150",
-                                                    isStart && "border-terracotta bg-selected ring-1 ring-terracotta",
-                                                    isEnd && "border-olive bg-selected ring-1 ring-olive",
-                                                    !isStart && !isEnd && "border-hairline hover:border-ring hover:bg-hover"
-                                                )}
-                                            >
-                                                <span className="text-xs font-medium text-text-strong max-w-40 truncate">{m.message}</span>
-                                                <span className="font-data text-[11px] text-muted">
-                                                    {formatLocalDate(m.timestamp, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                                                    {isStart && <span className="text-terracotta font-medium"> · start</span>}
-                                                    {isEnd && <span className="text-olive font-medium"> · end</span>}
-                                                </span>
-                                            </button>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteMarker(m.id); }}
-                                                title="Delete marker"
-                                                className="hidden group-hover:flex items-center justify-center absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-muted hover:bg-error text-on-accent transition-colors duration-150"
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </Box>
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-5 items-start">
+                    {/* Marker timeline. First on narrow screens, where marking
+                        something as it happens beats the action forms for urgency. */}
+                    <MarkerList
+                        className="lg:order-last lg:sticky lg:top-6"
+                        markers={markers}
+                        startMarkerId={startMarkerId}
+                        endMarkerId={endMarkerId}
+                        error={markerError}
+                        onAdd={handleAddMarker}
+                        onSelect={handleSelectMarker}
+                        onDelete={handleDeleteMarker}
+                    />
 
                     {/* Forefront actions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-                        <Box className="p-6 flex flex-col gap-3">
-                            <CardHeader icon={Scissors} title="Clip the last few seconds" />
-                            <div className="flex flex-col gap-1.5">
-                                <label className={labelClass}>Duration (seconds)</label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={clipDuration}
-                                    onChange={(e) => setClipDuration(Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </div>
-                            <input type="text" placeholder="Title" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} className={inputClass} />
-                            <textarea placeholder="Description" value={clipDescription} onChange={(e) => setClipDescription(e.target.value)} rows={2} className={inputClass + " resize-none"} />
-                            {clipError && <p className="text-sm text-error">{clipError}</p>}
-                            <PrimaryButton onClick={handleClip} className="self-start mt-auto">Clip</PrimaryButton>
-                        </Box>
-
+                    <div className="flex flex-col gap-5">
                         <Box className="p-6 flex flex-col gap-3">
                             <CardHeader icon={Film} title="Save between two markers" accent="accent" />
                             {markers.length < 2 ? (
-                                <p className="text-sm text-muted">Add at least two markers above to save a section between them.</p>
+                                <p className="text-sm text-muted">Add at least two markers to save a section between them.</p>
                             ) : (
                                 <>
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -374,19 +284,37 @@ const StreamControl = () => {
                             )}
                             <PrimaryButton onClick={handleSaveByMarkers} disabled={markers.length < 2} className="self-start mt-auto">Save</PrimaryButton>
                         </Box>
-                    </div>
 
-                    <Box className="p-5 flex flex-col gap-3">
-                        <CardHeader icon={Activity} title="Recent actions" />
-                        {jobs.length === 0 ? (
-                            <p className="text-sm text-muted">Clip and save actions will show up here.</p>
-                        ) : (
-                            <div className="flex flex-col gap-3">
-                                {jobs.map((job) => <JobStatus key={job.uuid} job={job} />)}
+                        <Box className="p-6 flex flex-col gap-3">
+                            <CardHeader icon={Scissors} title="Clip the last few seconds" />
+                            <div className="flex flex-col gap-1.5">
+                                <label className={labelClass}>Duration (seconds)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={clipDuration}
+                                    onChange={(e) => setClipDuration(Number(e.target.value))}
+                                    className={inputClass}
+                                />
                             </div>
-                        )}
-                    </Box>
-                </>
+                            <input type="text" placeholder="Title" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} className={inputClass} />
+                            <textarea placeholder="Description" value={clipDescription} onChange={(e) => setClipDescription(e.target.value)} rows={2} className={inputClass + " resize-none"} />
+                            {clipError && <p className="text-sm text-error">{clipError}</p>}
+                            <PrimaryButton onClick={handleClip} className="self-start mt-auto">Clip</PrimaryButton>
+                        </Box>
+
+                        <Box className="p-5 flex flex-col gap-3">
+                            <CardHeader icon={Activity} title="Recent actions" />
+                            {jobs.length === 0 ? (
+                                <p className="text-sm text-muted">Clip and save actions will show up here.</p>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    {jobs.map((job) => <JobStatus key={job.uuid} job={job} />)}
+                                </div>
+                            )}
+                        </Box>
+                    </div>
+                </div>
             )}
         </div>
     );

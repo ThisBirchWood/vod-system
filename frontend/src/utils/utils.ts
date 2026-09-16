@@ -21,6 +21,12 @@ function formatLocalDate(dateString: string, options?: Intl.DateTimeFormatOption
     return stringToDate(dateString).toLocaleDateString(undefined, options ?? { year: "numeric", month: "long", day: "numeric" });
 }
 
+// Clock time only, no date — markers within a stream are all from the same day,
+// so the date would just be noise beside them.
+function formatLocalTime(dateString: string): string {
+    return stringToDate(dateString).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 function dateToTimeAgo(date: Date): string {
     const secondsAgo = Math.floor((Date.now() - date.getTime()) / 1000);
     const units: [number, string][] = [
@@ -40,4 +46,4 @@ function dateToTimeAgo(date: Date): string {
     return `${s} second${s !== 1 ? 's' : ''} ago`;
 }
 
-export { formatTime, stringToDate, dateToTimeAgo, formatLocalDate };
+export { formatTime, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime };
