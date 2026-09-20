@@ -1,7 +1,9 @@
 package com.ddf.vodsystem.controllers;
 
+import com.ddf.vodsystem.controllers.dto.StreamKey;
 import com.ddf.vodsystem.dto.APIResponse;
 import com.ddf.vodsystem.controllers.dto.Token;
+import com.ddf.vodsystem.entities.Stream;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
 import com.ddf.vodsystem.services.UserService;
@@ -100,6 +102,14 @@ public class UserController {
 
         return ResponseEntity.ok(
                 new APIResponse<>(SUCCESS, "Logged out successfully", null)
+        );
+    }
+
+    @PostMapping("/me/stream-key")
+    public ResponseEntity<APIResponse<StreamKey>> regenerateStreamKey() {
+        String streamKey = userService.regenerateStreamKey();
+        return ResponseEntity.ok(
+            new APIResponse<>(SUCCESS, "Stream key successfully", new StreamKey(streamKey))
         );
     }
 }

@@ -90,19 +90,14 @@ public class StreamService {
     }
 
     /**
-     * Returns the current user's active (not-yet-ended) stream, if any.
+     * Returns the user's active (not-yet-ended) stream, if any.
      *
+     * @param user the User object
      * @return the active {@link Stream}, or empty if the user is not currently streaming
      * @throws NotAuthenticated if no user session is present
      */
-    public Optional<Stream> getActiveStream() {
-        Optional<User> user = userService.getLoggedInUser();
-
-        if (user.isEmpty()) {
-            throw new NotAuthenticated("Log in to see user streams");
-        }
-
-        return streamRepository.findByUserAndEndDateIsNull(user.get());
+    public Optional<Stream> getActiveStream(User user) {
+        return streamRepository.findByUserAndEndDateIsNull(user);
     }
 
     /**

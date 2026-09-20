@@ -98,6 +98,12 @@ public class UserService {
         return userRepository.findByStreamKey(streamKey);
     }
 
+    public String regenerateStreamKey(User user) {
+        user.setStreamKey(generateStreamKey());
+        userRepository.saveAndFlush(user);
+        return user.getStreamKey();
+    }
+
     private User createOrUpdateUser(User user) {
         Optional<User> existingUser = userRepository.findByGoogleId(user.getGoogleId());
 

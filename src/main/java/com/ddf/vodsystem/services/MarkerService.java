@@ -78,8 +78,8 @@ public class MarkerService {
      * @return the persisted {@link Marker}
      * @throws NotStreaming if the user has no active stream to mark
      */
-    public Marker create(String message) {
-        Optional<Stream> stream = streamService.getActiveStream();
+    public Marker create(User user, String message) {
+        Optional<Stream> stream = streamService.getActiveStream(user);
 
         if (stream.isEmpty()) {
             throw new NotStreaming("User must be streaming to mark");
