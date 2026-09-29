@@ -1,7 +1,4 @@
--- DROP TABLE IF EXISTS streams;
--- DROP TABLE IF EXISTS clips;
--- DROP TABLE IF EXISTS users;
-
+-- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     google_id VARCHAR(64),
@@ -14,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
     stream_key VARCHAR(64) NOT NULL UNIQUE
 );
 
+
+-- Streams Table
 CREATE TABLE IF NOT EXISTS streams (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT,
@@ -24,6 +23,7 @@ CREATE TABLE IF NOT EXISTS streams (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Clips Table
 CREATE TABLE IF NOT EXISTS clips (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS clips (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- VoDs Table
 CREATE TABLE IF NOT EXISTS vods (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS vods (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Markers Table
 CREATE TABLE IF NOT EXISTS markers (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
