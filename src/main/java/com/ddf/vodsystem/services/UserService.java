@@ -1,9 +1,12 @@
 package com.ddf.vodsystem.services;
 
+import com.ddf.vodsystem.dto.TokenPackage;
+import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
 import com.ddf.vodsystem.repositories.UserRepository;
 import com.ddf.vodsystem.security.JwtService;
+import com.ddf.vodsystem.security.TokenService;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -20,6 +23,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HexFormat;
+import java.util.MissingResourceException;
 import java.util.Optional;
 
 @Service
@@ -29,10 +33,12 @@ public class UserService {
     private final JwtService jwtService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private final TokenService tokenService;
 
     public UserService(UserRepository userRepository,
                        JwtService jwtService,
-                       @Value("${google.client.id}") String googleClientId) {
+                       @Value("${google.client.id}") String googleClientId,
+                       TokenService tokenService) {
         this.userRepository = userRepository;
 
         NetHttpTransport transport = new NetHttpTransport();
@@ -42,6 +48,7 @@ public class UserService {
                 .setAudience(Collections.singletonList(googleClientId))
                 .build();
         this.jwtService = jwtService;
+        this.tokenService = tokenService;
     }
 
     /**
@@ -85,7 +92,18 @@ public class UserService {
         User googleUser = getGoogleUser(googleIdToken);
         User user = createOrUpdateUser(googleUser);
 
+        TokenFamily tokenFamily = tokenService.createTokenFamily(user, )
+        String jwt = jwtService.generateToken(user.getId());
+
+
         return jwtService.generateToken(user.getId());
+    }
+
+    public TokenPackage refresh(String refreshToken) {
+        if (refreshToken == null) {
+            throw new NotAuthenticated("Missing refresh token");
+        }
+
     }
 
     /**
@@ -104,7 +122,7 @@ public class UserService {
         if (existingUser.isEmpty()) {
             user.setRole(0);
             user.setCreatedAt(Instant.now());
-            user.setStreamKey(generateStreamKey());
+            user.setStreamKey(HexFormat.of().formatHex(generateRandomBytes(24)));
             return userRepository.saveAndFlush(user);
         }
 
@@ -140,9 +158,9 @@ public class UserService {
         }
     }
 
-    private String generateStreamKey() {
-        byte[] bytes = new byte[24];
+    private byte[] generateRandomBytes(int length) {
+        byte[] bytes = new byte[length];
         SECURE_RANDOM.nextBytes(bytes);
-        return HexFormat.of().formatHex(bytes);
+        return bytes;
     }
 }
