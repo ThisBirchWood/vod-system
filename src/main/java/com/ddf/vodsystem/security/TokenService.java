@@ -5,12 +5,15 @@ import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.repositories.RefreshTokenRepository;
 import com.ddf.vodsystem.repositories.TokenFamilyRepository;
+import org.apache.commons.codec.binary.Hex;
 import org.springframework.stereotype.Service;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.HexFormat;
+import java.util.Optional;
 
 @Service
 public class TokenService {
@@ -18,6 +21,7 @@ public class TokenService {
     private final RefreshTokenRepository refreshTokenRepository;
 
     private static final SecureRandom RNG = new SecureRandom();
+    private final HexFormat hex = HexFormat.of();
 
     public TokenService (
             TokenFamilyRepository tokenFamilyRepository,
@@ -38,7 +42,7 @@ public class TokenService {
         return tokenFamilyRepository.saveAndFlush(tokenFamily);
     }
 
-    public RefreshToken getRefreshToken(
+    public RefreshToken createRefreshToken(
             byte[] token,
             TokenFamily tokenFamily,
             long expiryTimeMs
@@ -53,7 +57,28 @@ public class TokenService {
         return refreshTokenRepository.saveAndFlush(refreshToken);
     }
 
-    private static byte[] hashToken(byte[] token) {
+    public Optional<RefreshToken> getRefreshTokenByHash(byte[] refreshHash) {
+        return refreshTokenRepository.findByHash(refreshHash);
+    }
+
+    public Optional<TokenFamily> getFamilyByRefreshToken(RefreshToken refreshToken) {
+        return tokenFamilyRepository.findById(refreshToken.getTokenFamily().getId());
+    }
+
+    public TokenFamily revokeTokenFamily(TokenFamily tokenFamily) {
+        tokenFamily.setRevokedAt(Instant.now());
+        return tokenFamilyRepository.saveAndFlush(tokenFamily);
+    }
+
+    public String bytesToHex(byte[] bytes) {
+        return hex.formatHex(bytes);
+    }
+
+    public byte[] hexToBytes(String hexS) {
+        return hex.parseHex(hexS);
+    }
+
+    public byte[] hashToken(byte[] token) {
         try {
             return MessageDigest.getInstance("SHA-256").digest(token);  // 32 bytes
         } catch (NoSuchAlgorithmException e) {

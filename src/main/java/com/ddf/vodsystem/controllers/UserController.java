@@ -2,6 +2,7 @@ package com.ddf.vodsystem.controllers;
 
 import com.ddf.vodsystem.dto.APIResponse;
 import com.ddf.vodsystem.controllers.dto.Token;
+import com.ddf.vodsystem.dto.TokenPackage;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
 import com.ddf.vodsystem.services.UserService;
@@ -58,12 +59,12 @@ public class UserController {
      * @return {@code 200 OK} wrapping the issued JWT as a {@link Token}
      */
     @PostMapping("/login")
-    public ResponseEntity<APIResponse<Token>> login(@RequestBody Token token,
-		    				    HttpServletRequest request,
-                                                    HttpServletResponse response) {
-        String jwt = userService.login(token.token());
+    public ResponseEntity<APIResponse<TokenPackage>> login(@RequestBody Token token,
+                                                           HttpServletRequest request,
+                                                           HttpServletResponse response) {
+        TokenPackage tokenPackage = userService.login(token.token());
 
-        ResponseCookie cookie = ResponseCookie.from("token", jwt)
+        ResponseCookie cookie = ResponseCookie.from("token", tokenPackage.accessToken())
                 .httpOnly(true)
                 .maxAge(jwtExpiration / 1000)
                 .sameSite(request.isSecure() ? "None" : "Lax")
@@ -74,7 +75,7 @@ public class UserController {
         response.addHeader("Set-Cookie", cookie.toString());
 
         return ResponseEntity.ok(
-                new APIResponse<>(SUCCESS, "Logged in successfully", new Token(jwt))
+                new APIResponse<>(SUCCESS, "Logged in successfully", tokenPackage)
         );
     }
 

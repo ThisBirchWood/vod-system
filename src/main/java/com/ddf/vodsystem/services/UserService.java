@@ -1,6 +1,7 @@
 package com.ddf.vodsystem.services;
 
 import com.ddf.vodsystem.dto.TokenPackage;
+import com.ddf.vodsystem.entities.RefreshToken;
 import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
@@ -11,6 +12,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,10 +22,10 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HexFormat;
-import java.util.MissingResourceException;
 import java.util.Optional;
 
 @Service
@@ -32,7 +34,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
+    @Value("token-family.expiration")
+    private long tokenFamilyExpirationMs;
+
+    @Value("refresh-token.expiration")
+    private long refreshTokenExpirationMs;
+
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int REFRESH_GRACE_PERIOD_SECONDS = 5;
     private final TokenService tokenService;
 
     public UserService(UserRepository userRepository,
@@ -81,7 +90,8 @@ public class UserService {
      * @return a signed JWT for the authenticated user
      * @throws NotAuthenticated if the token is invalid or its subject is missing
      */
-    public String login(String idToken) {
+    @Transactional
+    public TokenPackage login(String idToken) {
         GoogleIdToken googleIdToken = getGoogleIdToken(idToken);
         String googleId = googleIdToken.getPayload().getSubject();
 
@@ -92,18 +102,62 @@ public class UserService {
         User googleUser = getGoogleUser(googleIdToken);
         User user = createOrUpdateUser(googleUser);
 
-        TokenFamily tokenFamily = tokenService.createTokenFamily(user, )
+        byte[] rawRefresh = generateRandomBytes(32);
+        TokenFamily tokenFamily = tokenService.createTokenFamily(user, tokenFamilyExpirationMs);
+        tokenService.createRefreshToken(tokenService.hashToken(rawRefresh), tokenFamily, refreshTokenExpirationMs);
+
         String jwt = jwtService.generateToken(user.getId());
-
-
-        return jwtService.generateToken(user.getId());
+        return new TokenPackage(tokenService.bytesToHex(rawRefresh), jwt);
     }
 
+    @Transactional(noRollbackFor = NotAuthenticated.class)
     public TokenPackage refresh(String refreshToken) {
-        if (refreshToken == null) {
+        if (refreshToken == null || refreshToken.isBlank()) {
             throw new NotAuthenticated("Missing refresh token");
         }
 
+        // Check Refresh Token is real
+        byte[] rawToken = tokenService.hexToBytes(refreshToken);
+        RefreshToken token = tokenService.getRefreshTokenByHash(rawToken)
+                .orElseThrow(() -> new NotAuthenticated("No such refresh token"));
+
+        // Find Token Family
+        Optional<TokenFamily> tokenFamily = tokenService.getFamilyByRefreshToken(token);
+
+        if (tokenFamily.isEmpty()) {
+            throw new IllegalStateException("Token must be tied to a family");
+        }
+
+        if (tokenFamily.get().getRevokedAt() != null) {
+            throw new NotAuthenticated("Token family has been revoked");
+        }
+
+        Instant now = Instant.now();
+
+        // Reuse Check
+        if (token.getUsedAt() != null) {
+            if (Duration.between(token.getUsedAt(), now).getSeconds() > REFRESH_GRACE_PERIOD_SECONDS) {
+                tokenService.revokeTokenFamily(tokenFamily.get());
+            }
+            throw new NotAuthenticated("Refresh token already used");
+        }
+
+        // Expiry Check
+        if (now.isAfter(token.getExpiresAt()) || now.isAfter(tokenFamily.get().getExpiresAt())) {
+            throw new NotAuthenticated("Refresh token or family expired");
+        }
+
+        // Rotate
+        token.setUsedAt(now);
+        byte[] newRawToken = generateRandomBytes(32);
+        tokenService.createRefreshToken(
+                newRawToken,
+                tokenFamily.get(),
+                refreshTokenExpirationMs
+        );
+
+        String jwt = jwtService.generateToken(tokenFamily.get().getUser().getId());
+        return new TokenPackage(tokenService.bytesToHex(newRawToken), jwt);
     }
 
     /**
