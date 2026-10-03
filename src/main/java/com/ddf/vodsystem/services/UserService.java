@@ -1,6 +1,7 @@
 package com.ddf.vodsystem.services;
 
 import com.ddf.vodsystem.dto.TokenPackage;
+import com.ddf.vodsystem.dto.properties.AuthProperties;
 import com.ddf.vodsystem.entities.RefreshToken;
 import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
@@ -9,11 +10,7 @@ import com.ddf.vodsystem.repositories.UserRepository;
 import com.ddf.vodsystem.security.JwtService;
 import com.ddf.vodsystem.security.TokenService;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
@@ -24,7 +21,6 @@ import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HexFormat;
 import java.util.Optional;
 
@@ -34,11 +30,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    @Value("token-family.expiration")
-    private long tokenFamilyExpirationMs;
-
-    @Value("refresh-token.expiration")
-    private long refreshTokenExpirationMs;
+    private final long tokenFamilyExpirationMs;
+    private final long refreshTokenExpirationMs;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int REFRESH_GRACE_PERIOD_SECONDS = 5;
@@ -46,18 +39,16 @@ public class UserService {
 
     public UserService(UserRepository userRepository,
                        JwtService jwtService,
-                       @Value("${google.client.id}") String googleClientId,
+                       GoogleIdTokenVerifier verifier,
+                       AuthProperties props,
                        TokenService tokenService) {
         this.userRepository = userRepository;
-
-        NetHttpTransport transport = new NetHttpTransport();
-        JsonFactory jsonFactory = new GsonFactory();
-
-        this.verifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
-                .setAudience(Collections.singletonList(googleClientId))
-                .build();
+        this.verifier = verifier;
         this.jwtService = jwtService;
         this.tokenService = tokenService;
+
+        this.refreshTokenExpirationMs = props.expiration().refreshToken().toMillis();
+        this.tokenFamilyExpirationMs = props.expiration().tokenFamily().toMillis();
     }
 
     /**

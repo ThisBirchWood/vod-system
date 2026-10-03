@@ -20,7 +20,7 @@ import java.util.Optional;
 public class UserController {
     private final UserService userService;
 
-    @Value("${jwt.expiration}")
+    @Value("${app.security.expiration.jwt}")
     private long jwtExpiration;
     private static final String SUCCESS = "success";
 
