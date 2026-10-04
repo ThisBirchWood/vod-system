@@ -1,5 +1,6 @@
 package com.ddf.vodsystem.services;
 
+import com.ddf.vodsystem.dto.GoogleUser;
 import com.ddf.vodsystem.dto.TokenPackage;
 import com.ddf.vodsystem.dto.properties.AuthProperties;
 import com.ddf.vodsystem.entities.RefreshToken;
@@ -7,17 +8,14 @@ import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
 import com.ddf.vodsystem.repositories.UserRepository;
+import com.ddf.vodsystem.security.GoogleVerifierService;
 import com.ddf.vodsystem.security.JwtService;
 import com.ddf.vodsystem.security.TokenService;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,7 +24,7 @@ import java.util.Optional;
 
 @Service
 public class UserService {
-    private final GoogleIdTokenVerifier verifier;
+    private final GoogleVerifierService googleVerifierService;
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
@@ -39,11 +37,11 @@ public class UserService {
 
     public UserService(UserRepository userRepository,
                        JwtService jwtService,
-                       GoogleIdTokenVerifier verifier,
+                       GoogleVerifierService googleVerifierService,
                        AuthProperties props,
                        TokenService tokenService) {
         this.userRepository = userRepository;
-        this.verifier = verifier;
+        this.googleVerifierService = googleVerifierService;
         this.jwtService = jwtService;
         this.tokenService = tokenService;
 
@@ -83,15 +81,8 @@ public class UserService {
      */
     @Transactional
     public TokenPackage login(String idToken) {
-        GoogleIdToken googleIdToken = getGoogleIdToken(idToken);
-        String googleId = googleIdToken.getPayload().getSubject();
-
-        if (googleId == null) {
-            throw new NotAuthenticated("Invalid ID token");
-        }
-
-        User googleUser = getGoogleUser(googleIdToken);
-        User user = createOrUpdateUser(googleUser);
+        GoogleUser googleUser = googleVerifierService.verify(idToken);
+        User user = createOrUpdateGoogleUser(googleUser);
 
         byte[] rawRefresh = generateRandomBytes(32);
         TokenFamily tokenFamily = tokenService.createTokenFamily(user, tokenFamilyExpirationMs);
@@ -161,46 +152,25 @@ public class UserService {
         return userRepository.findByStreamKey(streamKey);
     }
 
-    private User createOrUpdateUser(User user) {
-        Optional<User> existingUser = userRepository.findByGoogleId(user.getGoogleId());
+    private User createOrUpdateGoogleUser(GoogleUser googleUser) {
+        Optional<User> existingUser = userRepository.findByGoogleId(googleUser.googleId());
+        User user;
 
         if (existingUser.isEmpty()) {
+            user = new User();
+            user.setGoogleId(googleUser.googleId());
+            user.setUsername(googleUser.email());
             user.setRole(0);
             user.setCreatedAt(Instant.now());
             user.setStreamKey(HexFormat.of().formatHex(generateRandomBytes(24)));
-            return userRepository.saveAndFlush(user);
+        } else {
+            user = existingUser.get();
         }
 
-        User existing = existingUser.get();
-        existing.setEmail(user.getEmail());
-        existing.setName(user.getName());
-        existing.setProfilePictureUrl(user.getProfilePictureUrl());
-        existing.setUsername(user.getUsername());
-        return userRepository.saveAndFlush(existing);
-    }
-
-    private User getGoogleUser(GoogleIdToken idToken) {
-        String googleId = idToken.getPayload().getSubject();
-        String email = idToken.getPayload().getEmail();
-        String name = (String) idToken.getPayload().get("name");
-        String profilePictureUrl = (String) idToken.getPayload().get("picture");
-
-        User user = new User();
-        user.setGoogleId(googleId);
-        user.setEmail(email);
-        user.setName(name);
-        user.setUsername(email);
-        user.setProfilePictureUrl(profilePictureUrl);
-
-        return user;
-    }
-
-    private GoogleIdToken getGoogleIdToken(String idToken) {
-        try {
-            return verifier.verify(idToken);
-        } catch (GeneralSecurityException | IOException e) {
-            throw new NotAuthenticated("Invalid ID token: " + e.getMessage());
-        }
+        user.setEmail(googleUser.email());
+        user.setName(googleUser.name());
+        user.setProfilePictureUrl(googleUser.profilePictureUrl());
+        return userRepository.saveAndFlush(user);
     }
 
     private byte[] generateRandomBytes(int length) {
