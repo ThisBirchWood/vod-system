@@ -25,10 +25,18 @@ public class GoogleVerifierService {
             throw new NotAuthenticated("Invalid ID token: " + e.getMessage());
         }
 
+        if (token == null) {
+            throw new NotAuthenticated("Invalid ID token");
+        }
+
         String googleId = token.getPayload().getSubject();
 
         if (googleId == null) {
             throw new NotAuthenticated("Google ID does not exist");
+        }
+
+        if (!Boolean.TRUE.equals(token.getPayload().getEmailVerified())) {
+            throw new NotAuthenticated("Email not verified");
         }
 
         return new GoogleUser(

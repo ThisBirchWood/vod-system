@@ -1,88 +1,158 @@
 package com.ddf.vodsystem.security;
 
+import com.ddf.vodsystem.dto.properties.AuthProperties;
 import com.ddf.vodsystem.entities.RefreshToken;
 import com.ddf.vodsystem.entities.TokenFamily;
 import com.ddf.vodsystem.entities.User;
+import com.ddf.vodsystem.exceptions.NotAuthenticated;
 import com.ddf.vodsystem.repositories.RefreshTokenRepository;
 import com.ddf.vodsystem.repositories.TokenFamilyRepository;
-import org.apache.commons.codec.binary.Hex;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
 public class TokenService {
+    private static final SecureRandom RNG = new SecureRandom();
+    private static final HexFormat HEX = HexFormat.of();
+
     private final TokenFamilyRepository tokenFamilyRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    private static final SecureRandom RNG = new SecureRandom();
-    private final HexFormat hex = HexFormat.of();
+    private final Duration tokenFamilyExpirationMs;
+    private final Duration refreshTokenExpirationMs;
+    private final Duration refreshGracePeriod;
 
     public TokenService (
             TokenFamilyRepository tokenFamilyRepository,
-            RefreshTokenRepository refreshTokenRepository
+            RefreshTokenRepository refreshTokenRepository,
+            AuthProperties props
     ) {
         this.tokenFamilyRepository = tokenFamilyRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+
+        this.refreshTokenExpirationMs = props.expiration().refreshToken();
+        this.tokenFamilyExpirationMs = props.expiration().tokenFamily();
+        this.refreshGracePeriod = props.expiration().gracePeriod();
     }
 
-    public TokenFamily createTokenFamily(User user, long expiryTimeMs) {
+    @Transactional
+    public String createSession(User user) {
         Instant now = Instant.now();
 
         TokenFamily tokenFamily = new TokenFamily();
         tokenFamily.setUser(user);
         tokenFamily.setCreatedAt(now);
-        tokenFamily.setExpiresAt(now.plusMillis(expiryTimeMs));
+        tokenFamily.setExpiresAt(now.plusMillis(tokenFamilyExpirationMs.toMillis()));
+        tokenFamilyRepository.save(tokenFamily);
 
-        return tokenFamilyRepository.saveAndFlush(tokenFamily);
+        byte[] token = generateRandomBytes(32);
+
+        createRefreshToken(
+                token,
+                tokenFamily
+        );
+
+        return HEX.formatHex(token);
     }
 
-    public RefreshToken createRefreshToken(
+    @Transactional(noRollbackFor = NotAuthenticated.class)
+    public Rotation rotate(String hexToken) {
+        if (hexToken == null || hexToken.isBlank()) {
+            throw new NotAuthenticated("Missing refresh token");
+        }
+
+        byte[] hash;
+        try {
+            hash = sha256(HEX.parseHex(hexToken));
+        } catch (IllegalArgumentException e) {
+            throw new NotAuthenticated("Malformed refresh token");
+        }
+
+        Instant now = Instant.now();
+
+        // Check Token is real
+        RefreshToken refreshToken = refreshTokenRepository.findByHash(hash)
+                .orElseThrow(() -> new NotAuthenticated("No such refresh token"));
+
+        // Find Token Family
+        Optional<TokenFamily> tokenFamily = tokenFamilyRepository.findById(refreshToken.getTokenFamily().getId());
+
+        if (tokenFamily.isEmpty()) {
+            throw new IllegalStateException("Token must be tied to a family");
+        }
+
+        if (tokenFamily.get().getRevokedAt() != null) {
+            throw new NotAuthenticated("Token family has been revoked");
+        }
+
+        // Reuse Check
+        if (refreshToken.getUsedAt() != null) {
+            if (now.isAfter(refreshToken.getUsedAt().plus(refreshGracePeriod))) {
+                tokenFamily.get().setRevokedAt(Instant.now());
+                tokenFamilyRepository.save(tokenFamily.get());
+            }
+
+            throw new NotAuthenticated("Refresh token already being used");
+        }
+
+        // Expiry Check
+        if (
+                now.isAfter(refreshToken.getExpiresAt()) ||
+                now.isAfter(tokenFamily.get().getExpiresAt())
+        ) {
+            throw new NotAuthenticated("Refresh token or family expired");
+        }
+
+        // Rotate
+        refreshToken.setUsedAt(now);
+        refreshTokenRepository.save(refreshToken);
+
+        byte[] newRawToken = generateRandomBytes(32);
+        createRefreshToken(
+                newRawToken,
+                tokenFamily.get()
+        );
+
+        return new Rotation(tokenFamily.get().getUser().getId(), HEX.formatHex(newRawToken));
+    }
+
+    public record Rotation(Long userId, String newRefreshToken) {}
+
+    private static byte[] sha256(byte[] in) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(in);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private byte[] generateRandomBytes(int length) {
+        byte[] bytes = new byte[length];
+        RNG.nextBytes(bytes);
+        return bytes;
+    }
+
+
+    private RefreshToken createRefreshToken(
             byte[] token,
-            TokenFamily tokenFamily,
-            long expiryTimeMs
+            TokenFamily tokenFamily
     ) {
         Instant now = Instant.now();
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setTokenFamily(tokenFamily);
-        refreshToken.setTokenHash(hashToken(token));
+        refreshToken.setTokenHash(sha256(token));
         refreshToken.setCreatedAt(now);
-        refreshToken.setExpiresAt(now.plusMillis(expiryTimeMs));
+        refreshToken.setExpiresAt(now.plusMillis(refreshTokenExpirationMs.toMillis()));
         return refreshTokenRepository.saveAndFlush(refreshToken);
     }
 
-    public Optional<RefreshToken> getRefreshTokenByHash(byte[] refreshHash) {
-        return refreshTokenRepository.findByHash(refreshHash);
-    }
-
-    public Optional<TokenFamily> getFamilyByRefreshToken(RefreshToken refreshToken) {
-        return tokenFamilyRepository.findById(refreshToken.getTokenFamily().getId());
-    }
-
-    public TokenFamily revokeTokenFamily(TokenFamily tokenFamily) {
-        tokenFamily.setRevokedAt(Instant.now());
-        return tokenFamilyRepository.saveAndFlush(tokenFamily);
-    }
-
-    public String bytesToHex(byte[] bytes) {
-        return hex.formatHex(bytes);
-    }
-
-    public byte[] hexToBytes(String hexS) {
-        return hex.parseHex(hexS);
-    }
-
-    public byte[] hashToken(byte[] token) {
-        try {
-            return MessageDigest.getInstance("SHA-256").digest(token);  // 32 bytes
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 }
