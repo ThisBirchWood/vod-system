@@ -16,7 +16,6 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.Optional;
 
 @Service
 public class TokenService {
@@ -83,21 +82,17 @@ public class TokenService {
                 .orElseThrow(() -> new NotAuthenticated("No such refresh token"));
 
         // Find Token Family
-        Optional<TokenFamily> tokenFamily = tokenFamilyRepository.findById(refreshToken.getTokenFamily().getId());
+        TokenFamily tokenFamily = refreshToken.getTokenFamily();
 
-        if (tokenFamily.isEmpty()) {
-            throw new IllegalStateException("Token must be tied to a family");
-        }
-
-        if (tokenFamily.get().getRevokedAt() != null) {
+        if (tokenFamily.getRevokedAt() != null) {
             throw new NotAuthenticated("Token family has been revoked");
         }
 
         // Reuse Check
         if (refreshToken.getUsedAt() != null) {
             if (now.isAfter(refreshToken.getUsedAt().plus(refreshGracePeriod))) {
-                tokenFamily.get().setRevokedAt(Instant.now());
-                tokenFamilyRepository.save(tokenFamily.get());
+                tokenFamily.setRevokedAt(Instant.now());
+                tokenFamilyRepository.save(tokenFamily);
             }
 
             throw new NotAuthenticated("Refresh token already being used");
@@ -106,7 +101,7 @@ public class TokenService {
         // Expiry Check
         if (
                 now.isAfter(refreshToken.getExpiresAt()) ||
-                now.isAfter(tokenFamily.get().getExpiresAt())
+                now.isAfter(tokenFamily.getExpiresAt())
         ) {
             throw new NotAuthenticated("Refresh token or family expired");
         }
@@ -118,10 +113,10 @@ public class TokenService {
         byte[] newRawToken = generateRandomBytes(32);
         createRefreshToken(
                 newRawToken,
-                tokenFamily.get()
+                tokenFamily
         );
 
-        return new Rotation(tokenFamily.get().getUser().getId(), HEX.formatHex(newRawToken));
+        return new Rotation(tokenFamily.getUser().getId(), HEX.formatHex(newRawToken));
     }
 
     public record Rotation(Long userId, String newRefreshToken) {}
@@ -152,7 +147,7 @@ public class TokenService {
         refreshToken.setTokenHash(sha256(token));
         refreshToken.setCreatedAt(now);
         refreshToken.setExpiresAt(now.plusMillis(refreshTokenExpirationMs.toMillis()));
-        return refreshTokenRepository.saveAndFlush(refreshToken);
+        return refreshTokenRepository.save(refreshToken);
     }
 
 }
