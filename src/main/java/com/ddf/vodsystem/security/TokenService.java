@@ -89,12 +89,9 @@ public class TokenService {
         }
 
         // Reuse Check
-        if (refreshToken.getUsedAt() != null) {
-            if (now.isAfter(refreshToken.getUsedAt().plus(refreshGracePeriod))) {
-                tokenFamily.setRevokedAt(Instant.now());
-                tokenFamilyRepository.save(tokenFamily);
-            }
-
+        if (refreshToken.getUsedAt() != null && now.isAfter(refreshToken.getUsedAt().plus(refreshGracePeriod))) {
+            tokenFamily.setRevokedAt(now);
+            tokenFamilyRepository.save(tokenFamily);
             throw new NotAuthenticated("Refresh token already being used");
         }
 
@@ -106,9 +103,11 @@ public class TokenService {
             throw new NotAuthenticated("Refresh token or family expired");
         }
 
-        // Rotate
-        refreshToken.setUsedAt(now);
-        refreshTokenRepository.save(refreshToken);
+        // Invalidate old token, unless we're within the grace period, otherwise the grace gets extended
+        if (refreshToken.getUsedAt() == null) {
+            refreshToken.setUsedAt(now);
+            refreshTokenRepository.save(refreshToken);
+        }
 
         byte[] newRawToken = generateRandomBytes(32);
         createRefreshToken(
