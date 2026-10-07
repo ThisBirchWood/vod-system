@@ -18,9 +18,10 @@ public record AuthProperties (
 
     /**
      *
-     * @param jwt Duration object as to the length of the access token
-     * @param refreshToken Duration of refresh token
-     * @param tokenFamily Duration of token family
+     * @param jwt
+     * @param refreshToken
+     * @param tokenFamily
+     * @param gracePeriod
      */
     public record Expiration (
             @NotNull Duration jwt,

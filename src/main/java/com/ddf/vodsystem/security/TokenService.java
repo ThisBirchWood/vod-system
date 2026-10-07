@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -21,6 +22,8 @@ import java.util.HexFormat;
 public class TokenService {
     private static final SecureRandom RNG = new SecureRandom();
     private static final HexFormat HEX = HexFormat.of();
+
+    private final Clock clock;
 
     private final TokenFamilyRepository tokenFamilyRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -32,10 +35,12 @@ public class TokenService {
     public TokenService (
             TokenFamilyRepository tokenFamilyRepository,
             RefreshTokenRepository refreshTokenRepository,
-            AuthProperties props
+            AuthProperties props,
+            Clock clock
     ) {
         this.tokenFamilyRepository = tokenFamilyRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.clock = clock;
 
         this.refreshTokenExpirationMs = props.expiration().refreshToken();
         this.tokenFamilyExpirationMs = props.expiration().tokenFamily();
@@ -44,7 +49,7 @@ public class TokenService {
 
     @Transactional
     public String createSession(User user) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
 
         TokenFamily tokenFamily = new TokenFamily();
         tokenFamily.setUser(user);
@@ -75,7 +80,7 @@ public class TokenService {
             throw new NotAuthenticated("Malformed refresh token");
         }
 
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
 
         // Check Token is real
         RefreshToken refreshToken = refreshTokenRepository.findByHash(hash)
@@ -139,7 +144,7 @@ public class TokenService {
             byte[] token,
             TokenFamily tokenFamily
     ) {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setTokenFamily(tokenFamily);
