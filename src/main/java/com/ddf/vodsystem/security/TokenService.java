@@ -28,8 +28,8 @@ public class TokenService {
     private final TokenFamilyRepository tokenFamilyRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    private final Duration tokenFamilyExpirationMs;
-    private final Duration refreshTokenExpirationMs;
+    private final Duration tokenFamilyExpiration;
+    private final Duration refreshTokenExpiration;
     private final Duration refreshGracePeriod;
 
     public TokenService (
@@ -42,8 +42,8 @@ public class TokenService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.clock = clock;
 
-        this.refreshTokenExpirationMs = props.expiration().refreshToken();
-        this.tokenFamilyExpirationMs = props.expiration().tokenFamily();
+        this.refreshTokenExpiration = props.expiration().refreshToken();
+        this.tokenFamilyExpiration = props.expiration().tokenFamily();
         this.refreshGracePeriod = props.expiration().gracePeriod();
     }
 
@@ -54,7 +54,7 @@ public class TokenService {
         TokenFamily tokenFamily = new TokenFamily();
         tokenFamily.setUser(user);
         tokenFamily.setCreatedAt(now);
-        tokenFamily.setExpiresAt(now.plusMillis(tokenFamilyExpirationMs.toMillis()));
+        tokenFamily.setExpiresAt(now.plusMillis(tokenFamilyExpiration.toMillis()));
         tokenFamilyRepository.save(tokenFamily);
 
         byte[] token = generateRandomBytes(32);
@@ -150,7 +150,7 @@ public class TokenService {
         refreshToken.setTokenFamily(tokenFamily);
         refreshToken.setTokenHash(sha256(token));
         refreshToken.setCreatedAt(now);
-        refreshToken.setExpiresAt(now.plusMillis(refreshTokenExpirationMs.toMillis()));
+        refreshToken.setExpiresAt(now.plusMillis(refreshTokenExpiration.toMillis()));
         return refreshTokenRepository.save(refreshToken);
     }
 
