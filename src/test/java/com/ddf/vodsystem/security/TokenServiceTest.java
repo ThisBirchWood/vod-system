@@ -255,6 +255,32 @@ class TokenServiceTest {
             assertNull(newToken.getUsedAt());
         }
 
+        @Test
+        void ununsedToken_savesOldTokenWithUsedAt() {
+            TokenFamily tokenFamily = new TokenFamily();
+            tokenFamily.setId(1L);
+            tokenFamily.setUser(createUser(1L, "user", "user"));
+            tokenFamily.setExpiresAt(Instant.now(clock).plusSeconds(10));
+
+            RefreshToken refreshToken = new RefreshToken();
+            refreshToken.setTokenFamily(tokenFamily);
+            refreshToken.setExpiresAt(Instant.now(clock).plusSeconds(10));
+
+            when(refreshTokenRepository.findByHash(any()))
+                    .thenReturn(Optional.of(refreshToken));
+
+            tokenService.rotate(rawToken);
+
+            verify(refreshTokenRepository, times(2)).save(tokenCaptor.capture());
+
+            RefreshToken savedToken = tokenCaptor.getAllValues().stream()
+                    .filter(t -> t.getUsedAt() != null)
+                    .reduce((a, b) -> { throw new AssertionError("expected exactly one unused token saved"); })
+                    .orElseThrow(() -> new AssertionError("used_at field not set in any token"));
+
+            assertEquals(savedToken.getUsedAt(), clock.instant());
+        }
+
     }
 
 }
