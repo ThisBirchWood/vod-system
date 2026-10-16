@@ -1,10 +1,17 @@
 import type { APIResponse, User } from "../types.ts";
-import { API_URL, apiFetch } from "./client.ts";
+import { API_URL } from "./client.ts";
 
-// login and getUser deliberately use fetch directly: they run when there may be
-// no session at all, and getUser is what the unauthorized handler calls to
-// refresh — routing them through apiFetch would loop on a 401.
-const login = async (googleToken: string): Promise<string> => {
+// These deliberately use fetch directly rather than apiFetch: they run when
+// there may be no session at all, and apiFetch's refresh-and-retry on 401
+// would either loop or log the user out from under the auth provider.
+
+/**
+ * Exchanges a Google credential for a session. The tokens are set as HttpOnly
+ * cookies; only the access token lifetime is returned.
+ *
+ * @returns seconds until the access token expires
+ */
+const login = async (googleToken: string): Promise<number> => {
     const response = await fetch(API_URL + '/api/v1/users/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -17,12 +24,17 @@ const login = async (googleToken: string): Promise<string> => {
     const result: APIResponse = await response.json();
     if (result.status === 'error') throw new Error(`Login failed: ${result.message}`);
 
-    return result.data.token;
+    return result.data.accessTokenExpiresIn;
 };
 
+/** Revokes the session and clears the auth cookies. */
 const logout = async (): Promise<void> => {
-    const result = await apiFetch<APIResponse>(API_URL + '/api/v1/users/logout', { method: 'POST' });
-    if (result?.status === 'error') throw new Error(`Logout failed: ${result.message}`);
+    const response = await fetch(API_URL + '/api/v1/users/logout', {
+        method: 'POST',
+        credentials: 'include',
+    });
+
+    if (!response.ok) throw new Error(`Logout failed: ${response.status}`);
 };
 
 const getUser = async (): Promise<User | null> => {

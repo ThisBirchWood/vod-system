@@ -8,9 +8,9 @@ type AuthContextValue = {
     loading: boolean;
     /** Exchange a Google credential for a session, then load the user. */
     login: (googleCredential: string) => Promise<void>;
-    /** End the session and clear the user. */
+    /** End the session and clear the user. The local session is cleared even if the server call fails. */
     logout: () => Promise<void>;
-    /** Re-fetch the current user (e.g. after a profile change). */
+    /** Re-fetch the current user (e.g. after a profile change). Token refresh is handled automatically. */
     refresh: () => Promise<void>;
 };
 
