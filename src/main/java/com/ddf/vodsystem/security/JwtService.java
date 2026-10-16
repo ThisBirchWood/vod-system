@@ -7,6 +7,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.ddf.vodsystem.dto.properties.AuthProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
@@ -20,10 +21,9 @@ public class JwtService {
     private static final String USER_ID_CLAIM = "userId";
     private static final String ISSUER = "vodsystem";
 
-    public JwtService(@Value("${jwt.secret.key}") String jwtSecretKey,
-                      @Value("${jwt.expiration}") long jwtExpiration) {
-        this.jwtExpiration = jwtExpiration;
-        this.algorithm = Algorithm.HMAC256(jwtSecretKey);
+    public JwtService(AuthProperties props) {
+        this.jwtExpiration = props.expiration().jwt().toMillis();
+        this.algorithm = Algorithm.HMAC256(props.jwtSecret());
     }
 
     /**
