@@ -7,12 +7,14 @@ import type { Vod } from "../utils/types";
 const MyVods = () => {
     const [vods, setVods] = useState<Vod[]>([]);
     const [error, setError] = useState<null | string>(null);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
         getVods()
             .then((data) => setVods(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
-            .catch((err) => setError(err instanceof Error ? err.message : "Failed to load vods"));
+            .catch((err) => setError(err instanceof Error ? err.message : "Failed to load vods"))
+            .finally(() => setLoading(false));
     }, []);
 
     const handleDelete = async (id: number) => {
@@ -45,7 +47,7 @@ const MyVods = () => {
                 ))}
             </div>
 
-            {vods.length === 0 && !error && (
+            {vods.length === 0 && !error && !loading && (
                 <div className="flex flex-col items-center justify-center py-16 text-muted">
                     <p className="text-base">No VoDs yet.</p>
                     <p className="text-sm mt-1">Your stream recordings will appear here.</p>

@@ -7,12 +7,14 @@ import type { Clip } from "../utils/types";
 const MyClips = () => {
     const [clips, setClips] = useState<Clip[]>([]);
     const [error, setError] = useState<null | string>(null);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
         getClips()
             .then((data) => setClips(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
-            .catch((err) => setError(err));
+            .catch((err) => setError(err))
+            .finally(() => setLoading(false));
     }, []);
 
     const handleDelete = async (id: number) => {
@@ -42,7 +44,7 @@ const MyClips = () => {
                 ))}
             </div>
 
-            {clips.length === 0 && !error && (
+            {clips.length === 0 && !error && !loading && (
                 <div className="flex flex-col items-center justify-center py-16 text-muted">
                     <p className="text-base">No clips yet.</p>
                     <p className="text-sm mt-1">Upload your first clip to get started.</p>
