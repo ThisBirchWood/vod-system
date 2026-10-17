@@ -46,4 +46,52 @@ function dateToTimeAgo(date: Date): string {
     return `${s} second${s !== 1 ? 's' : ''} ago`;
 }
 
-export { formatTime, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime };
+function startOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+// Weeks start on Monday.
+function startOfWeek(date: Date): Date {
+    const day = startOfDay(date);
+    day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+    return day;
+}
+
+// Buckets a date relative to now. Anything before last month falls back to its
+// month and year, so older items still group sensibly.
+function timeRangeLabel(date: Date, now: Date = new Date()): string {
+    const today = startOfDay(now);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const thisWeek = startOfWeek(now);
+    const lastWeek = new Date(thisWeek);
+    lastWeek.setDate(thisWeek.getDate() - 7);
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    if (date >= today) return "Today";
+    if (date >= yesterday) return "Yesterday";
+    if (date >= thisWeek) return "This Week";
+    if (date >= lastWeek) return "Last Week";
+    if (date >= thisMonth) return "This Month";
+    if (date >= lastMonth) return "Last Month";
+    return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+type TimeGroup<T> = { label: string, items: T[] };
+
+// Expects items already sorted newest first; groups keep that order.
+function groupByTimeRange<T>(items: T[], getDateString: (item: T) => string): TimeGroup<T>[] {
+    const now = new Date();
+    const groups: TimeGroup<T>[] = [];
+    for (const item of items) {
+        const label = timeRangeLabel(stringToDate(getDateString(item)), now);
+        const last = groups[groups.length - 1];
+        if (last?.label === label) last.items.push(item);
+        else groups.push({ label, items: [item] });
+    }
+    return groups;
+}
+
+export { formatTime, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime, timeRangeLabel, groupByTimeRange };
+export type { TimeGroup };

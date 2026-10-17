@@ -1,7 +1,9 @@
 import VideoCard from "../components/video/VideoCard";
+import TimeGroupedGrid from "../components/video/TimeGroupedGrid";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getVods, deleteVod } from "../utils/api/vods";
+import { stringToDate } from "../utils/utils";
 import type { Vod } from "../utils/types";
 
 const MyVods = () => {
@@ -12,7 +14,7 @@ const MyVods = () => {
 
     useEffect(() => {
         getVods()
-            .then((data) => setVods(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+            .then((data) => setVods(data.sort((a, b) => stringToDate(b.createdAt).getTime() - stringToDate(a.createdAt).getTime())))
             .catch((err) => setError(err instanceof Error ? err.message : "Failed to load vods"))
             .finally(() => setLoading(false));
     }, []);
@@ -30,8 +32,10 @@ const MyVods = () => {
         <div className="p-6">
             <h1 className="text-4xl font-heading text-text-primary mb-6">My VoDs</h1>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {vods.map((vod) => (
+            <TimeGroupedGrid
+                items={vods}
+                getDate={(vod) => vod.createdAt}
+                renderItem={(vod) => (
                     <VideoCard
                         key={vod.id}
                         id={vod.id}
@@ -44,8 +48,8 @@ const MyVods = () => {
                         onEdit={() => navigate(`/vods/${vod.id}/edit`)}
                         onDelete={() => handleDelete(vod.id)}
                     />
-                ))}
-            </div>
+                )}
+            />
 
             {vods.length === 0 && !error && !loading && (
                 <div className="flex flex-col items-center justify-center py-16 text-muted">

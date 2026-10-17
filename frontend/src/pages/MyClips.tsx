@@ -1,7 +1,9 @@
 import VideoCard from "../components/video/VideoCard";
+import TimeGroupedGrid from "../components/video/TimeGroupedGrid";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getClips, deleteClip } from "../utils/api/clips";
+import { stringToDate } from "../utils/utils";
 import type { Clip } from "../utils/types";
 
 const MyClips = () => {
@@ -12,7 +14,7 @@ const MyClips = () => {
 
     useEffect(() => {
         getClips()
-            .then((data) => setClips(data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
+            .then((data) => setClips(data.sort((a, b) => stringToDate(b.createdAt).getTime() - stringToDate(a.createdAt).getTime())))
             .catch((err) => setError(err))
             .finally(() => setLoading(false));
     }, []);
@@ -30,8 +32,10 @@ const MyClips = () => {
         <div className="p-6">
             <h1 className="text-4xl font-heading text-text-primary mb-6">My Clips</h1>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {clips.map((clip) => (
+            <TimeGroupedGrid
+                items={clips}
+                getDate={(clip) => clip.createdAt}
+                renderItem={(clip) => (
                     <VideoCard
                         key={clip.id}
                         id={clip.id}
@@ -41,8 +45,8 @@ const MyClips = () => {
                         onEdit={() => navigate(`/clips/${clip.id}/edit`)}
                         onDelete={() => handleDelete(clip.id)}
                     />
-                ))}
-            </div>
+                )}
+            />
 
             {clips.length === 0 && !error && !loading && (
                 <div className="flex flex-col items-center justify-center py-16 text-muted">
