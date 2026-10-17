@@ -11,7 +11,7 @@ public class ClipOptions {
     private String description;
 
     @NotNull
-    @Positive
+    @PositiveOrZero
     private Float startPoint;
 
     @NotNull @Positive
