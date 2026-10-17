@@ -56,50 +56,61 @@
 /* Dark mode. Only token values change here: every component already styles
    itself with the semantic utilities above, so the whole UI follows from this
    one block. `--color-on-dark` is deliberately absent — it is the ink on the
-   media backdrop, which stays dark in both themes. */
+   media backdrop, which stays dark in both themes.
+
+   Soft charcoal rather than pure black, with only a trace of warmth so it
+   still sits with the paper tones of the light theme. Ink is a warm off-white
+   instead of #FFF, and terracotta becomes a gentle clay. Layering matches the
+   light theme: sidebar recessed, cards raised, fields inset into the card. */
 :root[data-theme="dark"] {
     color-scheme: dark;
 
-    /* ── Surfaces ── near-black canvas, neutral cards lifting off it ─────── */
-    --color-background: #0E0E10;
-    --color-sidebar: #09090B;
-    --color-card: #17171A;
-    --color-fields: #121215;
-    --color-dropzone: #141417;
+    /* ── Surfaces ────────────────────────────────────────────────────────── */
+    --color-background: #161615;
+    --color-sidebar: #111111;
+    --color-card: #1F1F1E;
+    --color-fields: #1A1A19;
+    --color-dropzone: #1C1C1B;
 
-    --color-media-backdrop: #000000;
+    --color-media-backdrop: #0B0B0B;
 
     /* ── Ink ─────────────────────────────────────────────────────────────── */
-    --color-text-primary: #F4F4F5;
-    --color-text-strong: #E3E3E7;
-    --color-text-body: #BFBFC6;
-    --color-text-secondary: #94949D;
-    --color-muted: #76767F;
-    --color-faint-mono: #6A6A73;
+    --color-text-primary: #F5F4EF;
+    --color-text-strong: #E8E6E0;
+    --color-text-body: #C9C7C0;
+    --color-text-secondary: #A2A099;
+    --color-muted: #87857F;
+    --color-faint-mono: #6C6B66;
 
-    /* ── Accents ── brightened to carry on a dark canvas, so hover now lifts
-       rather than deepens ─────────────────────────────────────────────────── */
-    --color-terracotta: #E07A4C;
-    --color-terracotta-hover: #F08F62;
-    --color-terracotta-light: #F0A177;
-    --color-terracotta-disabled: #5E463A;
-    --color-olive: #A3B678;
+    /* ── Accents ── clay and sage; hover lightens rather than deepens ────── */
+    --color-terracotta: #D97757;
+    --color-terracotta-hover: #E28B6E;
+    --color-terracotta-light: #BC6A4E;
+    --color-terracotta-disabled: #46372F;
+    --color-olive: #A7AF84;
 
     /* ── Status ──────────────────────────────────────────────────────────── */
-    --color-live: #F2604A;
-    --color-error: #F2604A;
+    --color-live: #E0644E;
+    --color-error: #E0644E;
 
     /* ── Ink on accent surfaces ── the accents are light here, so the ink that
        sits on them flips dark ─────────────────────────────────────────────── */
-    --color-on-accent: #17100B;
+    --color-on-accent: #1A1410;
 
     /* ── Lines, chips, placeholders ──────────────────────────────────────── */
-    --color-hairline: #232327;
-    --color-hover: #26262B;
-    --color-selected: #2A1F18;
-    --color-ring: #33333A;
-    --color-inactive: #2C2C32;
-    --color-inactive-strong: #55555E;
+    --color-hairline: #282827;
+    --color-hover: #2A2A29;
+    --color-selected: #2A2522;
+    --color-ring: #3B3B3A;
+    --color-inactive: #333332;
+    --color-inactive-strong: #5A5955;
+}
+
+/* Tailwind's shadows default to 10% black, which vanishes on a dark canvas.
+   `--tw-shadow-color` does not inherit, so it is set on the shadowed elements
+   themselves; a deeper warm-black keeps cards and menus visibly lifted. */
+:root[data-theme="dark"] :where(.shadow-sm, .shadow-md) {
+    --tw-shadow-color: rgb(0 0 0 / 0.45);
 }
 
 :root {
