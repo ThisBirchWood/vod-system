@@ -1,62 +1,26 @@
 import { useEffect, useState } from "react";
-import { Radio, Check, Scissors, Film, Activity, Loader2, X, History } from "lucide-react";
+import { Radio, Scissors, Film, Activity, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
 import Box from "../components/Box.tsx";
 import CardHeader from "../components/CardHeader.tsx";
 import MarkerList from "../components/stream/MarkerList.tsx";
+import JobStatus from "../components/stream/JobStatus.tsx";
 import PrimaryButton from "../components/buttons/PrimaryButton.tsx";
 import { useAuth } from "../auth/useAuth.ts";
-import { getCurrentStream, getStreamHistory } from "../utils/api/stream.ts";
+import useCurrentStream from "../hooks/useCurrentStream.ts";
+import useJobTracker from "../hooks/useJobTracker.ts";
 import { getMarkers, createMarker, deleteMarker } from "../utils/api/markers.ts";
 import { saveSectionByMarkers, clipSection } from "../utils/api/media.ts";
-import { getJob } from "../utils/api/jobs.ts";
-import type { StreamStatus, StreamHistoryItem, Marker, JobResponse } from "../utils/types.ts";
+import type { Marker } from "../utils/types.ts";
 import { formatLocalDate, stringToDate } from "../utils/utils.ts";
 
 const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 const labelClass = "font-data text-[11px] text-muted uppercase tracking-[0.12em]";
 
-type TrackedJob = {
-    uuid: string;
-    label: string;
-    progress: number;
-    state: JobResponse['state'];
-    errorOutput: string | null;
-};
-
-const JobStatus = ({ job }: { job: TrackedJob }) => {
-    if (job.state === 'FAILED') {
-        return (
-            <div className="flex items-start gap-2 text-sm">
-                <X size={15} className="text-error mt-0.5 flex-shrink-0" />
-                <p className="text-error">{job.label} failed: {job.errorOutput ?? "Unknown error"}</p>
-            </div>
-        );
-    }
-    if (job.state === 'SUCCEEDED') {
-        return (
-            <div className="flex items-center gap-2 text-sm">
-                <Check size={15} className="text-olive flex-shrink-0" />
-                <p className="text-text-body">{job.label} saved</p>
-            </div>
-        );
-    }
-    return (
-        <div className="flex items-center gap-2">
-            <Loader2 size={15} className="text-terracotta animate-spin flex-shrink-0" />
-            <div className="flex-1">
-                <p className="text-sm text-text-secondary mb-1">{job.label}…</p>
-                <progress value={job.progress} className="w-full h-1.5 rounded bg-fields" />
-            </div>
-        </div>
-    );
-};
-
 const StreamControl = () => {
     const { user } = useAuth();
-    const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
-    const [streamDetails, setStreamDetails] = useState<StreamHistoryItem | null>(null);
+    const { status: streamStatus, details: streamDetails, isStreaming } = useCurrentStream();
 
     const [markers, setMarkers] = useState<Marker[]>([]);
     const [markerError, setMarkerError] = useState<string | null>(null);
@@ -72,27 +36,7 @@ const StreamControl = () => {
     const [markerSaveDescription, setMarkerSaveDescription] = useState("");
     const [markerSaveError, setMarkerSaveError] = useState<string | null>(null);
 
-    const [jobs, setJobs] = useState<TrackedJob[]>([]);
-
-    const isStreaming = streamStatus?.isStreaming ?? false;
-
-    useEffect(() => {
-        if (!user) return;
-        const poll = () => getCurrentStream().then(setStreamStatus).catch(() => {});
-        poll();
-        const interval = setInterval(poll, 5000);
-        return () => clearInterval(interval);
-    }, [user]);
-
-    useEffect(() => {
-        if (!user || !streamStatus?.id) {
-            setStreamDetails(null);
-            return;
-        }
-        getStreamHistory(user.id)
-            .then((history) => setStreamDetails(history.find((s) => s.id === streamStatus.id) ?? null))
-            .catch(() => {});
-    }, [user, streamStatus?.id]);
+    const { jobs, addJob } = useJobTracker();
 
     const refreshMarkers = () => {
         getMarkers()
@@ -110,29 +54,6 @@ const StreamControl = () => {
         const interval = setInterval(refreshMarkers, 5000);
         return () => clearInterval(interval);
     }, [isStreaming, streamStatus?.id]);
-
-    useEffect(() => {
-        const pending = jobs.filter((j) => j.state !== 'SUCCEEDED' && j.state !== 'FAILED');
-        if (pending.length === 0) return;
-
-        const interval = setInterval(() => {
-            pending.forEach((job) => {
-                getJob(job.uuid)
-                    .then((result) => {
-                        setJobs((prev) => prev.map((j) => j.uuid === job.uuid
-                            ? { ...j, progress: result.progress, state: result.state, errorOutput: result.errorOutput }
-                            : j));
-                    })
-                    .catch(() => {});
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [jobs]);
-
-    const addJob = (uuid: string, label: string) => {
-        setJobs((prev) => [{ uuid, label, progress: 0, state: 'READY', errorOutput: null }, ...prev]);
-    };
 
     const handleAddMarker = async (message: string) => {
         setMarkerError(null);

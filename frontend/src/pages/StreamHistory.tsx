@@ -7,7 +7,7 @@ import CardHeader from "../components/CardHeader.tsx";
 import { useAuth } from "../auth/useAuth.ts";
 import { getStreamHistory } from "../utils/api/stream.ts";
 import type { StreamHistoryItem } from "../utils/types.ts";
-import { formatLocalDate, formatLocalTime, groupByTimeRange, stringToDate } from "../utils/utils.ts";
+import { formatDuration, formatLocalDate, formatLocalTime, groupByTimeRange, stringToDate } from "../utils/utils.ts";
 
 const labelClass = "font-data text-[11px] text-muted uppercase tracking-[0.12em]";
 
@@ -21,15 +21,6 @@ const streamSeconds = (stream: DatedStream, now: number): number => {
     const start = stringToDate(stream.startDate).getTime();
     const end = stream.endDate ? stringToDate(stream.endDate).getTime() : now;
     return Math.max(0, Math.floor((end - start) / 1000));
-};
-
-// Coarser than formatTime: a stream history reads better as "2h 14m" than "2:14:07".
-const formatDuration = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    if (m > 0) return `${m}m`;
-    return `${seconds}s`;
 };
 
 const Stat = ({ label, value }: { label: string, value: string }) => (

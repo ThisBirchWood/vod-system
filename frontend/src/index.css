@@ -51,6 +51,14 @@
     --color-ring: #E2DACB;
     --color-inactive: #DED7CA;
     --color-inactive-strong: #C4BAA9;
+
+    /* ── Motion ──────────────────────────────────────────────────────────── */
+    --animate-fade-up: fade-up 0.5s ease-out;
+
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 }
 
 /* Dark mode. Only token values change here: every component already styles

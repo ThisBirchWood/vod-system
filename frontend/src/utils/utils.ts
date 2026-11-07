@@ -7,6 +7,16 @@ function formatTime(seconds: number): string {
     return `${m}:${pad(s)}`;
 }
 
+// Coarser than formatTime, for totals and stream lengths: "2h 14m" reads
+// better there than "2:14:07".
+function formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${Math.floor(seconds)}s`;
+}
+
 // Parses a UTC date string, appending Z if no timezone offset is present so
 // the browser always interprets the value as UTC rather than local time.
 function stringToDate(dateString: string): Date {
@@ -93,5 +103,5 @@ function groupByTimeRange<T>(items: T[], getDateString: (item: T) => string): Ti
     return groups;
 }
 
-export { formatTime, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime, timeRangeLabel, groupByTimeRange };
+export { formatTime, formatDuration, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime, timeRangeLabel, groupByTimeRange };
 export type { TimeGroup };
