@@ -1,30 +1,23 @@
 import VideoCard from "../components/video/VideoCard";
 import TimeGroupedGrid from "../components/video/TimeGroupedGrid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getVods, deleteVod } from "../utils/api/vods";
-import { stringToDate } from "../utils/utils";
-import type { Vod } from "../utils/types";
+import { deleteVod } from "../utils/api/vods";
+import { useVods } from "../hooks/useLibrary";
 
 const MyVods = () => {
-    const [vods, setVods] = useState<Vod[]>([]);
-    const [error, setError] = useState<null | string>(null);
-    const [loading, setLoading] = useState(true);
+    const { data: vods = [], error: loadError, loading, mutate } = useVods();
+    const [deleteError, setDeleteError] = useState<null | string>(null);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        getVods()
-            .then((data) => setVods(data.sort((a, b) => stringToDate(b.createdAt).getTime() - stringToDate(a.createdAt).getTime())))
-            .catch((err) => setError(err instanceof Error ? err.message : "Failed to load vods"))
-            .finally(() => setLoading(false));
-    }, []);
+    const error = deleteError ?? (loadError ? (loadError instanceof Error ? loadError.message : "Failed to load vods") : null);
 
     const handleDelete = async (id: number) => {
         try {
             await deleteVod(id);
-            setVods(prev => prev.filter(v => v.id !== id));
+            mutate(prev => prev.filter(v => v.id !== id));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete vod");
+            setDeleteError(err instanceof Error ? err.message : "Failed to delete vod");
         }
     };
 

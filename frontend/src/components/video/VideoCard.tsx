@@ -1,9 +1,9 @@
 import clsx from "clsx";
 import { formatTime, stringToDate, dateToTimeAgo } from "../../utils/utils.ts";
 import { Link } from "react-router-dom";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
-import {config} from "../../config.ts";
+import { thumbnailUrl as buildThumbnailUrl } from "../../utils/thumbnails.ts";
 
 type VideoCardProps = {
     id: number,
@@ -18,16 +18,25 @@ type VideoCardProps = {
     itemLabel?: string,
 }
 
-const fallbackThumbnail = "public/default_thumbnail.png";
-const API_URL = config.apiUrl;
+const fallbackThumbnail = "/default_thumbnail.png";
 
 const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className, mediaApiPath = '/api/v1/clips', playerPath = '/video', itemLabel = 'clip' }: VideoCardProps) => {
     const [timeAgo, setTimeAgo] = useState(dateToTimeAgo(stringToDate(createdAt)));
     const [imgFailed, setImgFailed] = useState(false);
+    const [imgLoaded, setImgLoaded] = useState(false);
+    const imgRef = useRef<HTMLImageElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const thumbnailUrl = `${API_URL}${mediaApiPath}/${id}/thumbnail`;
+    const thumbnailUrl = buildThumbnailUrl(mediaApiPath, id);
+
+    // A thumbnail that's already in the image cache (warmed, or seen before)
+    // can be complete before onLoad is attached. Catch that before the first
+    // paint so cached images show at once instead of fading in.
+    useLayoutEffect(() => {
+        const img = imgRef.current;
+        if (img?.complete && img.naturalWidth > 0) setImgLoaded(true);
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -58,11 +67,20 @@ const VideoCard = ({ id, title, duration, createdAt, onEdit, onDelete, className
         <Link to={`${playerPath}/${id}`}>
             <div className={clsx("flex flex-col group cursor-pointer", className)}>
                 <div className="relative overflow-hidden rounded-lg">
+                    {!imgLoaded && (
+                        <div className="absolute inset-0 bg-fields motion-safe:animate-pulse" aria-hidden />
+                    )}
                     <img
+                        ref={imgRef}
                         src={imgFailed ? fallbackThumbnail : thumbnailUrl}
+                        onLoad={() => setImgLoaded(true)}
                         onError={() => setImgFailed(true)}
+                        decoding="async"
                         alt="Video Thumbnail"
-                        className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-200"
+                        className={clsx(
+                            "relative w-full aspect-video object-cover group-hover:scale-105 transition-[opacity,scale,transform] duration-200",
+                            imgLoaded ? "opacity-100" : "opacity-0",
+                        )}
                     />
 
                     <span className="absolute top-1.5 left-1.5 bg-media-backdrop/75 text-on-dark px-1.5 py-0.5 rounded text-xs font-data pointer-events-none">

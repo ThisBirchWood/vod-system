@@ -4,6 +4,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { getVodById, patchVod } from "../utils/api/vods.ts";
 import Box from "../components/Box.tsx";
 import PrimaryButton from "../components/buttons/PrimaryButton.tsx";
+import { updateCachedVod } from "../hooks/useLibrary.ts";
 
 const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 
@@ -36,7 +37,7 @@ const EditVod = () => {
         setSaving(true);
         setError(null);
         try {
-            await patchVod(Number(id), { title, description });
+            updateCachedVod(await patchVod(Number(id), { title, description }));
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
         } catch (err) {

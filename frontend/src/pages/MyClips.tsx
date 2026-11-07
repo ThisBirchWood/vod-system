@@ -1,30 +1,23 @@
 import VideoCard from "../components/video/VideoCard";
 import TimeGroupedGrid from "../components/video/TimeGroupedGrid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getClips, deleteClip } from "../utils/api/clips";
-import { stringToDate } from "../utils/utils";
-import type { Clip } from "../utils/types";
+import { deleteClip } from "../utils/api/clips";
+import { useClips } from "../hooks/useLibrary";
 
 const MyClips = () => {
-    const [clips, setClips] = useState<Clip[]>([]);
-    const [error, setError] = useState<null | string>(null);
-    const [loading, setLoading] = useState(true);
+    const { data: clips = [], error: loadError, loading, mutate } = useClips();
+    const [deleteError, setDeleteError] = useState<null | string>(null);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        getClips()
-            .then((data) => setClips(data.sort((a, b) => stringToDate(b.createdAt).getTime() - stringToDate(a.createdAt).getTime())))
-            .catch((err) => setError(err))
-            .finally(() => setLoading(false));
-    }, []);
+    const error = deleteError ?? (loadError ? (loadError instanceof Error ? loadError.message : "Failed to load clips") : null);
 
     const handleDelete = async (id: number) => {
         try {
             await deleteClip(id);
-            setClips(prev => prev.filter(c => c.id !== id));
+            mutate(prev => prev.filter(c => c.id !== id));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete clip");
+            setDeleteError(err instanceof Error ? err.message : "Failed to delete clip");
         }
     };
 
@@ -55,7 +48,7 @@ const MyClips = () => {
                 </div>
             )}
 
-            {error && <p className="text-sm text-error mt-4">{error.toString()}</p>}
+            {error && <p className="text-sm text-error mt-4">{error}</p>}
         </div>
     );
 }

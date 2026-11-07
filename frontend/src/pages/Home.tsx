@@ -9,9 +9,9 @@ import Greeting from "../components/home/Greeting.tsx";
 import QuickActions from "../components/home/QuickActions.tsx";
 import { LivePanel, OfflinePanel } from "../components/home/StreamPanel.tsx";
 import VideoCard from "../components/video/VideoCard.tsx";
-import { deleteClip, getClips } from "../utils/api/clips.ts";
-import { getVods } from "../utils/api/vods.ts";
-import type { Clip, StreamHistoryItem, User, Vod } from "../utils/types.ts";
+import { deleteClip } from "../utils/api/clips.ts";
+import { useClips, useVods } from "../hooks/useLibrary.ts";
+import type { StreamHistoryItem, User } from "../utils/types.ts";
 import { formatDuration, stringToDate } from "../utils/utils.ts";
 
 const RECENT_CLIPS = 8;
@@ -19,9 +19,6 @@ const RECENT_VODS = 4;
 
 const labelClass = "font-data text-[11px] text-muted uppercase tracking-[0.12em]";
 const gridClass = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4";
-
-const byNewest = <T extends { createdAt: string }>(items: T[]) =>
-    [...items].sort((a, b) => stringToDate(b.createdAt).getTime() - stringToDate(a.createdAt).getTime());
 
 const startOfToday = () => {
     const d = new Date();
@@ -82,29 +79,27 @@ const Dashboard = ({ user }: { user: User }) => {
     const { status, isStreaming, details, history } = useCurrentStream();
     const { jobs, addJob, succeededCount } = useJobTracker();
 
-    const [clips, setClips] = useState<Clip[] | null>(null);
-    const [vods, setVods] = useState<Vod[] | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const { data: cachedClips, error: clipsError, refresh: refreshClips, mutate: mutateClips } = useClips();
+    const { data: cachedVods, error: vodsError } = useVods();
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
-    // Re-run when a live clip finishes so it shows up in "Recent clips" straight away.
-    useEffect(() => {
-        getClips()
-            .then((data) => setClips(byNewest(data)))
-            .catch((err) => setError(err instanceof Error ? err.message : "Failed to load clips"));
-    }, [succeededCount]);
+    const clips = cachedClips ?? null;
+    // A failed VoD load just hides the section rather than showing an error.
+    const vods = cachedVods ?? (vodsError ? [] : null);
+    const error = deleteError
+        ?? (clipsError ? (clipsError instanceof Error ? clipsError.message : "Failed to load clips") : null);
 
+    // Refresh when a live clip finishes so it shows up in "Recent clips" straight away.
     useEffect(() => {
-        getVods()
-            .then((data) => setVods(byNewest(data)))
-            .catch(() => setVods([]));
-    }, []);
+        if (succeededCount > 0) refreshClips();
+    }, [succeededCount, refreshClips]);
 
     const handleDeleteClip = async (id: number) => {
         try {
             await deleteClip(id);
-            setClips((prev) => prev?.filter((c) => c.id !== id) ?? prev);
+            mutateClips((prev) => prev.filter((c) => c.id !== id));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete clip");
+            setDeleteError(err instanceof Error ? err.message : "Failed to delete clip");
         }
     };
 

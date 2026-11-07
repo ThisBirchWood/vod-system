@@ -8,6 +8,7 @@ import {
     registerSessionRefreshedHandler,
     registerUnauthorizedHandler,
 } from "../utils/api/client.ts";
+import { clearLibrary, prefetchLibrary } from "../hooks/useLibrary.ts";
 
 /** Refresh this long before the access token expires, so in-flight requests never see it lapse. */
 const REFRESH_MARGIN_MS = 60_000;
@@ -103,6 +104,15 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [scheduleRefreshIn]);
 
     useEffect(() => cancelScheduledRefresh, [cancelScheduledRefresh]);
+
+    // Warm the clip and VoD libraries as soon as someone is signed in, and
+    // drop them when the session ends so the next account starts clean.
+    const userId = user?.id;
+    useEffect(() => {
+        if (userId === undefined) return;
+        prefetchLibrary();
+        return clearLibrary;
+    }, [userId]);
 
     const login = useCallback(async (googleCredential: string) => {
         scheduleRefreshBeforeExpiry(await apiLogin(googleCredential));
