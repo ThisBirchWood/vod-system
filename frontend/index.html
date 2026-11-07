@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/small_icon.png" />
+    <!-- The tab strip follows the OS/browser theme, not the in-app toggle, so
+         the favicon swaps on prefers-color-scheme rather than data-theme. -->
+    <link rel="icon" type="image/png" href="/small_icon.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/small_icon_dark.png" media="(prefers-color-scheme: dark)" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

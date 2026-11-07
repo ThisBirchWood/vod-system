@@ -38,10 +38,18 @@ const Home = () => {
         <div className="flex flex-col items-center px-8 py-12 min-h-full">
             {/* Hero */}
             <div className="flex flex-col items-center text-center max-w-2xl mb-14">
-                <img
-                    src="/logo.png"
-                    alt="VoD System Logo"
-                    className="h-24 mb-6 object-contain"
+                {/* The logo PNG is used only as an alpha mask, so one asset
+                    renders solid black in light mode and white in dark mode. */}
+                <div
+                    role="img"
+                    aria-label="VoD System Logo"
+                    className="h-24 aspect-square mb-6 bg-black dark:bg-white"
+                    style={{
+                        maskImage: "url(/logo.png)",
+                        maskSize: "contain",
+                        maskRepeat: "no-repeat",
+                        maskPosition: "center",
+                    }}
                 />
                 <h1 className="text-4xl font-heading text-text-primary">
                     A home for your clips.
