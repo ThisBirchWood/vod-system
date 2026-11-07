@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Radio, Check, Scissors, Film, Activity, Loader2, X } from "lucide-react";
+import { Radio, Check, Scissors, Film, Activity, Loader2, X, History } from "lucide-react";
+import { Link } from "react-router-dom";
 import clsx from "clsx";
 import Box from "../components/Box.tsx";
 import CardHeader from "../components/CardHeader.tsx";
@@ -214,7 +215,13 @@ const StreamControl = () => {
 
     return (
         <div className="px-8 py-10 max-w-5xl mx-auto flex flex-col gap-5">
-            <h1 className="text-4xl font-heading text-text-primary">Stream Control</h1>
+            <div className="flex items-end justify-between gap-4">
+                <h1 className="text-4xl font-heading text-text-primary">Stream Control</h1>
+                <Link to="/stream/history" className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-strong transition-colors">
+                    <History size={15} />
+                    History
+                </Link>
+            </div>
 
             {/* Hero status bar */}
             <Box className={clsx(
