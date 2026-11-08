@@ -8,8 +8,8 @@ import {useEffect} from "react";
 import MyClips from './pages/MyClips';
 import MyVods from './pages/MyVods';
 import MediaPlayer from "./pages/MediaPlayer.tsx";
-import { getVodById, getVodMediaUrl } from "./utils/api/vods.ts";
-import { getClipById, getClipMediaUrl } from "./utils/api/clips.ts";
+import { getVodById, getVodMediaUrl, patchVod } from "./utils/api/vods.ts";
+import { getClipById, getClipMediaUrl, patchClip } from "./utils/api/clips.ts";
 import EditClip from "./pages/EditClip.tsx";
 import EditVod from "./pages/EditVod.tsx";
 import Profile from "./pages/Profile.tsx";
@@ -42,8 +42,8 @@ function App() {
                                 <Route element={<RequireAuth />}>
                                     <Route path="/my-clips" element={<MyClips />} />
                                     <Route path="/my-vods" element={<MyVods />} />
-                                    <Route path="/video/:id" element={<MediaPlayer noun="Clip" getMediaUrl={getClipMediaUrl} fetchDetails={getClipById} />} />
-                                    <Route path="/vod/:id" element={<MediaPlayer noun="VoD" getMediaUrl={getVodMediaUrl} fetchDetails={getVodById} />} />
+                                    <Route path="/video/:id" element={<MediaPlayer noun="Clip" getMediaUrl={getClipMediaUrl} fetchDetails={getClipById} rename={(id, title) => patchClip(id, { title })} />} />
+                                    <Route path="/vod/:id" element={<MediaPlayer noun="VoD" getMediaUrl={getVodMediaUrl} fetchDetails={getVodById} rename={(id, title) => patchVod(id, { title })} />} />
                                     <Route path="/clips/:id/edit" element={<EditClip />} />
                                     <Route path="/vods/:id/edit" element={<EditVod />} />
                                     <Route path="/profile" element={<Profile />} />

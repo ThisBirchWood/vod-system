@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Maximize, Minimize, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Lock, Maximize, Minimize, Pause, Pencil, Play, Volume1, Volume2, VolumeX } from "lucide-react";
 import { AuthError } from "../utils/api/client.ts";
+import { useAuth } from "../auth/useAuth.ts";
 import Box from "../components/Box.tsx";
 import { dateToTimeAgo, formatTime, stringToDate } from "../utils/utils.ts";
 
 // Both VoDs and clips share the same on-screen shape.
 type MediaItem = {
+    userId: number,
     title: string,
     createdAt: string,
 };
@@ -19,11 +21,17 @@ type MediaPlayerProps = {
     getMediaUrl: (id: string) => string,
     /** Fetches the media metadata for the given id. */
     fetchDetails: (id: string) => Promise<MediaItem | null>,
+    /** Persists a new title for the given id and returns the updated media. */
+    rename: (id: number, title: string) => Promise<MediaItem>,
 };
 
-const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
+// Matches the length of the `title` column on the backend.
+const MAX_TITLE_LENGTH = 255;
+
+const MediaPlayer = ({ noun, getMediaUrl, fetchDetails, rename }: MediaPlayerProps) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +61,16 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
+
+    // Renaming
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [titleDraft, setTitleDraft] = useState("");
+    const [isSavingTitle, setIsSavingTitle] = useState(false);
+    const [renameError, setRenameError] = useState<string | null>(null);
+    // Guards against the input's blur re-triggering a save after Enter/Escape
+    // has already ended the edit (the input blurs as it unmounts).
+    const renamingRef = useRef(false);
+    const canRename = !!item && !!user && user.id === item.userId;
 
     // ── Data loading ────────────────────────────────────────────────────────
     // The video stream itself is loaded by the <video> element from `mediaUrl`,
@@ -193,6 +211,45 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
         if (!video) return;
         video.paused ? video.play() : video.pause();
         showControls();
+    };
+
+    // ── Renaming ────────────────────────────────────────────────────────────
+    const startRename = () => {
+        if (!item) return;
+        setTitleDraft(item.title ?? "");
+        setRenameError(null);
+        renamingRef.current = true;
+        setIsRenaming(true);
+    };
+
+    const cancelRename = () => {
+        renamingRef.current = false;
+        setIsRenaming(false);
+        setRenameError(null);
+    };
+
+    const commitRename = async () => {
+        if (!id || !item || !renamingRef.current || isSavingTitle) return;
+        const title = titleDraft.trim();
+
+        // Nothing to do; blank titles are rejected rather than saved.
+        if (!title || title === item.title) {
+            cancelRename();
+            return;
+        }
+
+        setIsSavingTitle(true);
+        setRenameError(null);
+        try {
+            const updated = await rename(Number(id), title);
+            setItem(prev => prev ? { ...prev, title: updated.title } : updated);
+            renamingRef.current = false;
+            setIsRenaming(false);
+        } catch (err) {
+            setRenameError(err instanceof Error ? err.message : `Failed to rename ${noun.toLowerCase()}.`);
+        } finally {
+            setIsSavingTitle(false);
+        }
     };
 
     const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -340,7 +397,39 @@ const MediaPlayer = ({ noun, getMediaUrl, fetchDetails }: MediaPlayerProps) => {
             )}
 
             <Box className="p-4 flex-shrink-0">
-                <p className="text-2xl font-heading text-text-primary">{item?.title || "(No Title)"}</p>
+                {isRenaming ? (
+                    <input
+                        type="text"
+                        autoFocus
+                        value={titleDraft}
+                        maxLength={MAX_TITLE_LENGTH}
+                        readOnly={isSavingTitle}
+                        aria-label={`${noun} title`}
+                        onChange={(e) => setTitleDraft(e.target.value)}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                            else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+                        }}
+                        className="w-full text-2xl font-heading text-text-primary bg-fields border border-hairline rounded-md px-2 -mx-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-muted read-only:opacity-60 transition-colors"
+                    />
+                ) : (
+                    <div className="flex items-center gap-2 group/title min-w-0">
+                        <p className="text-2xl font-heading text-text-primary truncate">{item?.title || "(No Title)"}</p>
+                        {canRename && (
+                            <button
+                                onClick={startRename}
+                                title={`Rename ${noun.toLowerCase()}`}
+                                aria-label={`Rename ${noun.toLowerCase()}`}
+                                className="flex-shrink-0 text-muted hover:text-text-primary opacity-60 group-hover/title:opacity-100 focus-visible:opacity-100 transition-[color,opacity] duration-150"
+                            >
+                                <Pencil size={16} />
+                            </button>
+                        )}
+                    </div>
+                )}
+                {renameError && <p className="text-error text-sm mt-1">{renameError}</p>}
                 <p className="text-sm text-text-secondary mt-1">{timeAgo}</p>
             </Box>
         </div>
