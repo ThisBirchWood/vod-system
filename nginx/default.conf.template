@@ -26,6 +26,8 @@ rtmp {
             on_publish_done ${WEB_SERVER_URL}/api/v1/stream/stop;
             on_update ${WEB_SERVER_URL}/api/v1/stream/heartbeat;
             notify_update_timeout 30s;
+
+            drop_idle_publisher 15s;
         }
     }
 }

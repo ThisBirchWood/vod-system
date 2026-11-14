@@ -86,6 +86,8 @@ public class StreamService {
                         "No active stream found for user " + user.getUsername()));
 
         stream.setLastSeen(Instant.now());
+
+        logger.debug("Heartbeat sent for stream {}", stream.getId());
         streamRepository.saveAndFlush(stream);
     }
 
