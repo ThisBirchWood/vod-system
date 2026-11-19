@@ -26,9 +26,29 @@ jobs:
       - name: Run unit tests
         run: ./mvnw --batch-mode --no-transfer-progress test
 
+  integration-tests:
+    name: Maven integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: https://github.com/actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run integration tests
+        run: >
+          ./mvnw --batch-mode --no-transfer-progress verify
+          -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false
+
   build-and-push:
     name: Build and push images
-    needs: unit-tests
+    needs: [unit-tests, integration-tests]
     if: gitea.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
