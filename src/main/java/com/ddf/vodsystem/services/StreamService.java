@@ -5,9 +5,11 @@ import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.exceptions.AlreadyStreaming;
 import com.ddf.vodsystem.exceptions.KeyNotFound;
 import com.ddf.vodsystem.exceptions.NotAuthenticated;
+import com.ddf.vodsystem.exceptions.NotStreaming;
 import com.ddf.vodsystem.repositories.StreamRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +38,8 @@ public class StreamService {
      * @param streamKey the stream key resolving to the broadcasting user
      * @return the newly persisted {@link Stream}
      * @throws KeyNotFound      if no user owns {@code streamKey}
-     * @throws AlreadyStreaming if the user already has an active stream
+     * @throws AlreadyStreaming if the user already has an active stream, including when a
+     *                          concurrent start wins the race
      */
     public Stream startStream(String streamKey) {
         User user = resolveUser(streamKey);
@@ -50,7 +53,16 @@ public class StreamService {
         stream.setUser(user);
         stream.setStartDate(now);
         stream.setLastSeen(now);
-        return streamRepository.saveAndFlush(stream);
+
+        try {
+            return streamRepository.saveAndFlush(stream);
+        } catch (DataIntegrityViolationException e) {
+            // A concurrent start won the race; the partial unique index allows one active stream per user
+            if (streamRepository.findByUserAndEndDateIsNull(user).isPresent()) {
+                throw new AlreadyStreaming("User " + user.getUsername() + " is already streaming.");
+            }
+            throw e;
+        }
     }
 
     /**
@@ -58,17 +70,14 @@ public class StreamService {
      *
      * @param streamKey the stream key resolving to the broadcasting user
      * @throws KeyNotFound           if no user owns {@code streamKey}
-     * @throws IllegalStateException if the user has no active stream
+     * @throws NotStreaming          if the user has no active stream
      */
+    @Transactional
     public void endStream(String streamKey) {
         User user = resolveUser(streamKey);
-
-        Stream stream = streamRepository.findByUserAndEndDateIsNull(user)
-                .orElseThrow(() -> new IllegalStateException(
-                        "No active stream found for user " + user.getUsername()));
-
-        stream.setEndDate(Instant.now());
-        streamRepository.saveAndFlush(stream);
+        if (streamRepository.endActive(user, Instant.now()) == 0) {
+            throw new NotStreaming("No active stream found for user " + user.getUsername());
+        }
     }
 
     /**
@@ -76,19 +85,15 @@ public class StreamService {
      *
      * @param streamKey the stream key resolving to the broadcasting user
      * @throws KeyNotFound           if no user owns {@code streamKey}
-     * @throws IllegalStateException if the user has no active stream
+     * @throws NotStreaming          if the user has no active stream
      */
+    @Transactional
     public void heartbeatStream(String streamKey) {
         User user = resolveUser(streamKey);
-
-        Stream stream = streamRepository.findByUserAndEndDateIsNull(user)
-                .orElseThrow(() -> new IllegalStateException(
-                        "No active stream found for user " + user.getUsername()));
-
-        stream.setLastSeen(Instant.now());
-
-        logger.debug("Heartbeat sent for stream {}", stream.getId());
-        streamRepository.saveAndFlush(stream);
+        if (streamRepository.heartbeatActive(user, Instant.now()) == 0) {
+            throw new NotStreaming("No active stream found for user " + user.getUsername());
+        }
+        logger.debug("Heartbeat sent for user {}", user.getUsername());
     }
 
     /**

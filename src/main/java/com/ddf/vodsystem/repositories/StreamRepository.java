@@ -3,6 +3,9 @@ package com.ddf.vodsystem.repositories;
 import com.ddf.vodsystem.entities.Stream;
 import com.ddf.vodsystem.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -34,4 +37,14 @@ public interface StreamRepository extends JpaRepository<Stream, Long> {
      * @return the stale active streams
      */
     List<Stream> findByEndDateIsNullAndLastSeenBefore(Instant cutoff);
+
+    /** Sets last-seen on the user's active stream; returns 0 if there is none. */
+    @Modifying
+    @Query("UPDATE Stream s SET s.lastSeen = :now WHERE s.user = :user AND s.endDate IS NULL")
+    int heartbeatActive(@Param("user") User user, @Param("now") Instant now);
+
+    /** Ends the user's active stream; returns 0 if there is none. */
+    @Modifying
+    @Query("UPDATE Stream s SET s.endDate = :now WHERE s.user = :user AND s.endDate IS NULL")
+    int endActive(@Param("user") User user, @Param("now") Instant now);
 }
