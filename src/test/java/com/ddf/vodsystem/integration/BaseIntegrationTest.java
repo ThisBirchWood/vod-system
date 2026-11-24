@@ -4,6 +4,8 @@ import com.ddf.vodsystem.entities.User;
 import com.ddf.vodsystem.repositories.UserRepository;
 import com.ddf.vodsystem.security.GoogleVerifierService;
 import com.ddf.vodsystem.security.JwtService;
+import com.ddf.vodsystem.services.JobRegistryService;
+import com.ddf.vodsystem.services.media.ThumbnailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -36,6 +39,8 @@ import java.util.UUID;
  *         is started once per JVM and shared by every subclass</li>
  *     <li>Throwaway media/stream/temp directories for the run</li>
  *     <li>A mocked {@link GoogleVerifierService}, so login can be driven without Google</li>
+ *     <li>A spied {@link ThumbnailService}, which runs ffmpeg for real unless a test stubs it to fail</li>
+ *     <li>A spied {@link JobRegistryService}</li>
  *     <li>Helpers for creating users and authenticating requests as them</li>
  *     <li>Database cleanup after every test</li>
  * </ul>
@@ -80,6 +85,11 @@ public abstract class BaseIntegrationTest {
 
     /** Reset after every test. Stub {@code verify(idToken)} to simulate a Google login. */
     @MockitoBean protected GoogleVerifierService googleVerifierService;
+
+    /** Real ffmpeg by default and reset after every test. Stub it to simulate a thumbnail failure. */
+    @MockitoSpyBean protected ThumbnailService thumbnailService;
+
+    @MockitoSpyBean protected JobRegistryService jobRegistryService;
 
     @AfterEach
     void cleanDatabase() {

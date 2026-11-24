@@ -4,7 +4,7 @@ import com.ddf.vodsystem.controllers.dto.JobResponse;
 import com.ddf.vodsystem.dto.APIResponse;
 import com.ddf.vodsystem.dto.Job;
 import com.ddf.vodsystem.exceptions.ClipNotFound;
-import com.ddf.vodsystem.exceptions.NotReadyException;
+import com.ddf.vodsystem.exceptions.JobNotFinished;
 import com.ddf.vodsystem.services.JobRegistryService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -60,7 +60,7 @@ public class JobController {
      * @param uuid the UUID of the job whose output to download
      * @return {@code 200 OK} with the output file as a downloadable resource
      * @throws com.ddf.vodsystem.exceptions.JobNotFound     if no job with {@code uuid} exists
-     * @throws NotReadyException if the job has not yet produced a downloadable file
+     * @throws JobNotFinished if the job has not yet produced a downloadable file
      * @throws ClipNotFound     if the job's output file no longer exists on disk
      */
     @GetMapping("/{uuid}/download")
@@ -68,7 +68,7 @@ public class JobController {
         Job job = jobRegistryService.getJob(uuid);
 
         if (job.getDownload() == null) {
-            throw new NotReadyException("Job " + uuid + " not ready for download.");
+            throw new JobNotFinished("Job " + uuid + " not ready for download.");
         }
 
         Resource resource = new FileSystemResource(job.getDownload());

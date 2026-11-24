@@ -4,7 +4,6 @@ import com.ddf.vodsystem.dto.ClipOptions;
 import com.ddf.vodsystem.controllers.dto.ClipUpdateRequest;
 import com.ddf.vodsystem.entities.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -259,12 +258,13 @@ public class ClipService {
     }
 
     private void deleteClipFiles(Clip clip) {
-        File clipFile = new File(clip.getVideoPath());
-        File thumbnailFile = new File(clip.getThumbnailPath());
+        // Stored paths are relative to the users media root, not the working directory
+        Path clipFile = directoryService.resolvePath(clip.getVideoPath());
+        Path thumbnailFile = directoryService.resolvePath(clip.getThumbnailPath());
 
         try {
-            Files.deleteIfExists(clipFile.toPath());
-            Files.deleteIfExists(thumbnailFile.toPath());
+            Files.deleteIfExists(clipFile);
+            Files.deleteIfExists(thumbnailFile);
         } catch (IOException e) {
             logger.error("Could not delete clip files for clip ID: {}", clip.getId());
         }

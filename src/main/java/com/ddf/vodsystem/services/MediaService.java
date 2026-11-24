@@ -77,11 +77,6 @@ public class MediaService {
                 clipOptions,
                 job.getProgressTracker()
         ).thenRun(() -> {
-            job.setDownload(tempOutputFile);
-            job.setState(JobState.SUCCEEDED);
-            logger.info("Compression job {} succeeded", job.getUuid());
-
-            // save clip if user context
             user.ifPresent(userVal ->
                 clipService.persistClip(
                         clipOptions.getTitle(),
@@ -91,6 +86,10 @@ public class MediaService {
                         filename
                 )
             );
+
+            job.setDownload(tempOutputFile);
+            job.setState(JobState.SUCCEEDED);
+            logger.info("Compression job {} succeeded", job.getUuid());
         }).exceptionally(ex -> {
             job.setState(JobState.FAILED);
             job.setErrorOutput("Compression job failed");
@@ -132,9 +131,10 @@ public class MediaService {
         User user = userService.getLoggedInUser()
                 .orElseThrow(() -> new NotAuthenticated("User is not authenticated"));
 
-        Job job = jobRegistryService.generateJob();
         StreamActionsService.SegmentSelection ctx = resolveSegments(user, startTime, endTime);
         Path outputFile = directoryService.getVodsDir(user.getId()).resolve(UUID.randomUUID() + ".mp4");
+
+        Job job = jobRegistryService.generateJob();
 
         return dispatchSaveJob(job, ctx, outputFile, () ->
             vodService.persist(
@@ -209,9 +209,10 @@ public class MediaService {
         User user = userService.getLoggedInUser()
                 .orElseThrow(() -> new NotAuthenticated("User is not authenticated"));
 
-        Job job = jobRegistryService.generateJob();
         StreamActionsService.SegmentSelection ctx = resolveSegments(user, startTime, endTime);
         Path outputFile = directoryService.getTempOutputDir().resolve(UUID.randomUUID() + ".mp4");
+
+        Job job = jobRegistryService.generateJob();
 
         return dispatchSaveJob(job, ctx, outputFile, () ->
             clipService.persistClip(
@@ -233,10 +234,10 @@ public class MediaService {
         job.setState(JobState.PROCESSING);
         streamActionsService.saveSection(ctx, outputFile, job.getProgressTracker())
             .thenRun(() -> {
+                onSuccess.run();
                 job.setDownload(outputFile);
                 job.setState(JobState.SUCCEEDED);
                 logger.info("Stream save job {} succeeded", job.getUuid());
-                onSuccess.run();
             }).exceptionally(ex -> {
                 job.setState(JobState.FAILED);
                 job.setErrorOutput("FFMPEG failed to save stream segments");

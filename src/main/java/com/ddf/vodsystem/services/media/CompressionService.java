@@ -79,14 +79,23 @@ public class CompressionService {
 
         if (!(width == null && height == null)) {
             logger.info("Scaling video to width: {}, height: {}", width, height);
-            String w = (width != null) ? width.toString() : "-1";
-            String h = (height != null) ? height.toString() : "-1";
-            filters.add("scale=" + w + ":" + h);
+            filters.add("scale=" + scaleDimension(width) + ":" + scaleDimension(height));
+        } else {
+            // Keep native size, but libx264 still rejects odd dimensions
+            filters.add("scale=trunc(iw/2)*2:trunc(ih/2)*2");
         }
 
         logger.info("Adding video filters");
         command.add(String.join(",", filters));
         return command;
+    }
+
+    // libx264 requires even dimensions
+    private static String scaleDimension(Integer value) {
+        if (value == null) {
+            return "-2";
+        }
+        return Integer.toString(Math.max(2, value - (value % 2)));
     }
 
     private List<String> buildBitrate(Float length, Long fileSize) {
@@ -135,9 +144,7 @@ public class CompressionService {
 
         command.addAll(buildInputs(inputFile, clipOptions.getStartPoint(), clipOptions.getDuration()));
 
-        if (clipOptions.getFps() != null || clipOptions.getWidth() != null || clipOptions.getHeight() != null) {
-            command.addAll(buildFilters(clipOptions.getFps(), clipOptions.getWidth(), clipOptions.getHeight()));
-        }
+        command.addAll(buildFilters(clipOptions.getFps(), clipOptions.getWidth(), clipOptions.getHeight()));
 
         if (clipOptions.getFileSize() != null) {
             command.addAll(buildBitrate(clipOptions.getDuration(), clipOptions.getFileSize()));

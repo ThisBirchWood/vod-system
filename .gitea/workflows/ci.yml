@@ -41,6 +41,14 @@ jobs:
           java-version: "21"
           cache: maven
 
+      - name: Install ffmpeg
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -n1
+          ffprobe -version | head -n1
+
       - name: Run integration tests
         run: >
           ./mvnw --batch-mode --no-transfer-progress verify

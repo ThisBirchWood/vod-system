@@ -37,7 +37,7 @@ class CompressionServiceTest {
         assertThat(command).containsSubsequence("-t", "30.0");
         assertThat(command).containsSubsequence("-i", input.toAbsolutePath().toString());
 
-        assertThat(command).doesNotContain("-vf");
+        assertThat(command).containsSequence("-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2");
         assertThat(command).doesNotContain("-b:v");
 
         assertThat(command).endsWith(output.toAbsolutePath().toString());
@@ -108,7 +108,7 @@ class CompressionServiceTest {
 
         List<String> command = compressionService.buildCommand(input, output, options);
 
-        assertThat(command).containsSequence("-vf", "scale=1920:-1");
+        assertThat(command).containsSequence("-vf", "scale=1920:-2");
     }
 
     @Test
@@ -124,11 +124,44 @@ class CompressionServiceTest {
 
         List<String> command = compressionService.buildCommand(input, output, options);
 
-        assertThat(command).containsSequence("-vf", "scale=-1:1080");
+        assertThat(command).containsSequence("-vf", "scale=-2:1080");
     }
 
     @Test
-    void buildCommand_onlyHasFps_hasNoScaleFilter() {
+    void buildCommand_oddDimensions_roundedDownToEven() {
+        Path input = Path.of("/tmp/input.mp4");
+        Path output = Path.of("/tmp/output.mp4");
+        ClipOptions options = new ClipOptions();
+
+        options.setTitle("hello");
+        options.setStartPoint(10.0f);
+        options.setDuration(30.0f);
+        options.setWidth(1281);
+        options.setHeight(721);
+
+        List<String> command = compressionService.buildCommand(input, output, options);
+
+        assertThat(command).containsSequence("-vf", "scale=1280:720");
+    }
+
+    @Test
+    void buildCommand_dimensionOfOne_clampedToTwo() {
+        Path input = Path.of("/tmp/input.mp4");
+        Path output = Path.of("/tmp/output.mp4");
+        ClipOptions options = new ClipOptions();
+
+        options.setTitle("hello");
+        options.setStartPoint(10.0f);
+        options.setDuration(30.0f);
+        options.setWidth(1);
+
+        List<String> command = compressionService.buildCommand(input, output, options);
+
+        assertThat(command).containsSequence("-vf", "scale=2:-2");
+    }
+
+    @Test
+    void buildCommand_onlyHasFps_keepsNativeSizeRoundedToEven() {
         Path input = Path.of("/tmp/input.mp4");
         Path output = Path.of("/tmp/output.mp4");
         ClipOptions options = new ClipOptions();
@@ -140,7 +173,7 @@ class CompressionServiceTest {
 
         List<String> command = compressionService.buildCommand(input, output, options);
 
-        assertThat(command).containsSequence("-vf", "fps=60.0");
+        assertThat(command).containsSequence("-vf", "fps=60.0,scale=trunc(iw/2)*2:trunc(ih/2)*2");
     }
 
     @Test

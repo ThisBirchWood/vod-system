@@ -14,7 +14,6 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -238,12 +237,13 @@ public class VodService {
     }
 
     private void deleteVodFiles(Vod vod) {
-        File vodFile = new File(vod.getVideoPath());
-        File thumbnailFile = new File(vod.getThumbnailPath());
+        // Stored paths are relative to the users media root, not the working directory
+        Path vodFile = directoryService.resolvePath(vod.getVideoPath());
+        Path thumbnailFile = directoryService.resolvePath(vod.getThumbnailPath());
 
         try {
-            Files.deleteIfExists(vodFile.toPath());
-            Files.deleteIfExists(thumbnailFile.toPath());
+            Files.deleteIfExists(vodFile);
+            Files.deleteIfExists(thumbnailFile);
         } catch (IOException e) {
             logger.error("Could not delete vod files for vod ID: {}", vod.getId());
         }
