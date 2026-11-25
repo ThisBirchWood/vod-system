@@ -142,6 +142,38 @@ func (c *Client) Logout(ctx context.Context) error {
 	return err
 }
 
+// ClientConfig is the public bootstrap configuration the backend serves to desktop clients.
+type ClientConfig struct {
+	GoogleClientID string `json:"googleClientId"`
+	// RTMPURL is empty when the server leaves it to the client to derive.
+	RTMPURL string `json:"rtmpUrl"`
+	// WebsiteURL is the web frontend where captured clips can be watched.
+	WebsiteURL string `json:"websiteUrl"`
+}
+
+// ClientConfig fetches the bootstrap configuration. It needs no session.
+func (c *Client) ClientConfig(ctx context.Context) (ClientConfig, error) {
+	var cfg ClientConfig
+	resp, err := c.send(ctx, http.MethodGet, "/api/v1/client/config", nil, nil)
+	if err != nil {
+		return cfg, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return cfg, readError(resp)
+	}
+	var envelope struct {
+		Data ClientConfig `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+		return cfg, fmt.Errorf("this does not look like a VoD server: %w", err)
+	}
+	if envelope.Data.GoogleClientID == "" {
+		return cfg, errors.New("the server did not provide a Google client ID")
+	}
+	return envelope.Data, nil
+}
+
 // User is the authenticated user's profile.
 type User struct {
 	ID        int64  `json:"id"`

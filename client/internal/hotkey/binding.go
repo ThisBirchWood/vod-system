@@ -101,9 +101,69 @@ var keyNames = func() []string {
 // ErrUnavailable means global hotkeys cannot be registered in this build or session.
 var ErrUnavailable = errors.New("global hotkeys are unavailable")
 
+// ErrCancelled means the user dismissed the desktop's shortcut dialog.
+var ErrCancelled = errors.New("shortcut setup was cancelled")
+
 // Registration is a registered global hotkey.
 type Registration interface {
 	// Pressed delivers a value each time the hotkey is pressed.
 	Pressed() <-chan struct{}
 	Unregister() error
+}
+
+// Display formats the modifiers for people, e.g. "Ctrl+Alt".
+func (m Modifier) Display() string {
+	var parts []string
+	for _, mod := range []struct {
+		mod  Modifier
+		name string
+	}{{Ctrl, "Ctrl"}, {Shift, "Shift"}, {Alt, "Alt"}, {Super, superName}} {
+		if m&mod.mod != 0 {
+			parts = append(parts, mod.name)
+		}
+	}
+	return strings.Join(parts, "+")
+}
+
+// Display formats the binding for people, e.g. "Ctrl+Alt+F10".
+func (b Binding) Display() string {
+	if b.Mods == 0 {
+		return displayKey(b.Key)
+	}
+	return b.Mods.Display() + "+" + displayKey(b.Key)
+}
+
+func displayKey(k string) string {
+	switch {
+	case len(k) == 1:
+		return strings.ToUpper(k)
+	case k[0] == 'f' && len(k) <= 3:
+		return strings.ToUpper(k)
+	default:
+		return strings.ToUpper(k[:1]) + k[1:]
+	}
+}
+
+// PortalTrigger formats the binding in the XDG shortcuts syntax the GlobalShortcuts portal takes
+// as a preferred trigger, e.g. "CTRL+ALT+F10". Keys are xkb keysym names.
+func (b Binding) PortalTrigger() string {
+	var parts []string
+	for _, m := range []struct {
+		mod  Modifier
+		name string
+	}{{Ctrl, "CTRL"}, {Shift, "SHIFT"}, {Alt, "ALT"}, {Super, "LOGO"}} {
+		if b.Mods&m.mod != 0 {
+			parts = append(parts, m.name)
+		}
+	}
+	key := b.Key
+	switch {
+	case len(key) == 1:
+		// letters and digits are their own lowercase keysyms
+	case key[0] == 'f' && len(key) <= 3:
+		key = strings.ToUpper(key)
+	default:
+		key = strings.ToUpper(key[:1]) + key[1:] // Return, Escape, Left, ...
+	}
+	return strings.Join(append(parts, key), "+")
 }

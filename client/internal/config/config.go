@@ -1,4 +1,4 @@
-// Package config loads and persists the vod-client configuration and session.
+// Package config loads and persists the vod-client settings and session.
 package config
 
 import (
@@ -11,27 +11,37 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// Set at build time so users never have to type a server address:
+//
+//	go build -ldflags "-X gitea.defaoite.dev/dylan/vod-system/client/internal/config.DefaultServerURL=https://vod.example.com"
+var (
+	DefaultServerURL = ""
+	Version          = "dev"
+)
+
+// AppID identifies the app to the OS: notifications, desktop entries and the shortcuts portal.
+const AppID = "dev.defaoite.VodClient"
+
+// AppName is the user-facing name.
+const AppName = "VoD Client"
 
 // MaxClipSeconds mirrors the backend's CLIP_MAX_LENGTH; longer clips are rejected server side.
 const MaxClipSeconds = 180
 
-// Config is the user-editable configuration, stored as JSON.
+// Config holds the user's settings. Everything here is editable from the Settings window; the
+// JSON file is an implementation detail.
 type Config struct {
-	// ServerURL is the backend base URL, e.g. https://vod.example.com or http://localhost:8080.
+	// ServerURL is the backend base URL. Defaults to DefaultServerURL.
 	ServerURL string `json:"server_url"`
-	// RTMPURL is the ingest URL OBS streams to. Derived from ServerURL when empty.
-	RTMPURL string `json:"rtmp_url,omitempty"`
-	// GoogleClientID is the OAuth web client ID the backend verifies ID tokens against.
-	GoogleClientID string `json:"google_client_id"`
-	// OAuthRedirectPort is the loopback port for the login callback. http://localhost:<port>/callback
-	// must be registered as an authorised redirect URI on the Google OAuth client.
-	OAuthRedirectPort int `json:"oauth_redirect_port"`
 	// ClipSeconds is how far back a clip reaches, like ShadowPlay's instant replay length.
 	ClipSeconds float64 `json:"clip_seconds"`
-
-	Hotkeys Hotkeys `json:"hotkeys"`
-	OBS     OBS     `json:"obs"`
+	Hotkeys     Hotkeys `json:"hotkeys"`
+	// StartOnLogin launches the client into the tray when the user logs in to their computer.
+	StartOnLogin bool `json:"start_on_login"`
+	OBS          OBS  `json:"obs"`
 }
 
 // Hotkeys maps each action to a key combination such as "alt+f10". Empty disables the hotkey.
@@ -47,8 +57,8 @@ type OBS struct {
 	Path              string `json:"path,omitempty"`
 	WebsocketPort     int    `json:"websocket_port"`
 	WebsocketPassword string `json:"websocket_password"`
-	AutoInstall       bool   `json:"auto_install"`
-	AutoStartStream   bool   `json:"auto_start_stream"`
+	// AutoStartStream goes live as soon as OBS is ready, and keeps the stream up if it drops.
+	AutoStartStream bool `json:"auto_start_stream"`
 	// CloseOnExit stops the stream and quits OBS on exit, if vod-client launched it.
 	CloseOnExit bool `json:"close_on_exit"`
 }
@@ -56,9 +66,9 @@ type OBS struct {
 // Default returns a configuration with sensible defaults and a fresh websocket password.
 func Default() Config {
 	return Config{
-		ServerURL:         "http://localhost:8080",
-		OAuthRedirectPort: 53682,
-		ClipSeconds:       30,
+		ServerURL:    DefaultServerURL,
+		ClipSeconds:  30,
+		StartOnLogin: true,
 		Hotkeys: Hotkeys{
 			Clip:    "alt+f10",
 			Section: "alt+f9",
@@ -67,30 +77,38 @@ func Default() Config {
 		OBS: OBS{
 			WebsocketPort:     4455,
 			WebsocketPassword: randomHex(16),
-			AutoInstall:       true,
 			AutoStartStream:   true,
 			CloseOnExit:       true,
 		},
 	}
 }
 
-// Validate reports the first problem with the configuration, if any.
-func (c Config) Validate() error {
-	u, err := url.Parse(c.ServerURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return fmt.Errorf("server_url %q must be an absolute http(s) URL", c.ServerURL)
+// NormalizeServerURL turns what a user might type ("vod.example.com/") into a base URL.
+func NormalizeServerURL(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", errors.New("enter your VoD server's address")
 	}
-	if c.RTMPURL != "" {
-		r, err := url.Parse(c.RTMPURL)
-		if err != nil || (r.Scheme != "rtmp" && r.Scheme != "rtmps") || r.Host == "" {
-			return fmt.Errorf("rtmp_url %q must be an rtmp:// or rtmps:// URL", c.RTMPURL)
+	if !strings.Contains(s, "://") {
+		s = "https://" + s
+	}
+	u, err := url.Parse(s)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", fmt.Errorf("%q is not a valid server address", s)
+	}
+	return strings.TrimRight(u.Scheme+"://"+u.Host+u.Path, "/"), nil
+}
+
+// Validate reports the first problem with the configuration, if any. An empty server URL is
+// allowed: it means the user has not chosen one yet.
+func (c Config) Validate() error {
+	if c.ServerURL != "" {
+		if _, err := NormalizeServerURL(c.ServerURL); err != nil {
+			return fmt.Errorf("server_url: %w", err)
 		}
 	}
 	if c.ClipSeconds <= 0 || c.ClipSeconds > MaxClipSeconds {
 		return fmt.Errorf("clip_seconds must be between 0 and %d", MaxClipSeconds)
-	}
-	if !validPort(c.OAuthRedirectPort) {
-		return fmt.Errorf("oauth_redirect_port %d is not a valid port", c.OAuthRedirectPort)
 	}
 	if !validPort(c.OBS.WebsocketPort) {
 		return fmt.Errorf("obs.websocket_port %d is not a valid port", c.OBS.WebsocketPort)
@@ -101,15 +119,15 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// IngestURL returns the RTMP URL OBS should stream to. Without an explicit rtmp_url it assumes the
-// nginx-rtmp sidecar runs on the backend's host at the default port and the "live" application.
-func (c Config) IngestURL() (string, error) {
-	if c.RTMPURL != "" {
-		return c.RTMPURL, nil
+// IngestURL returns the RTMP URL OBS should stream to: the one the server advertises, or else
+// the nginx-rtmp sidecar's default port and application on the server's host.
+func IngestURL(serverURL, advertised string) (string, error) {
+	if advertised != "" {
+		return advertised, nil
 	}
-	u, err := url.Parse(c.ServerURL)
+	u, err := url.Parse(serverURL)
 	if err != nil || u.Hostname() == "" {
-		return "", fmt.Errorf("cannot derive rtmp_url from server_url %q", c.ServerURL)
+		return "", fmt.Errorf("cannot derive an RTMP URL from %q", serverURL)
 	}
 	return "rtmp://" + net.JoinHostPort(u.Hostname(), "1935") + "/live", nil
 }
@@ -124,7 +142,7 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-// Dir returns the directory holding the config and session files.
+// Dir returns the directory holding the config, session and log files.
 func Dir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
@@ -133,36 +151,41 @@ func Dir() (string, error) {
 	return filepath.Join(base, "vod-client"), nil
 }
 
-// Load reads the config at path. If it does not exist, a default config is written there first,
-// so the generated websocket password stays stable across runs. The bool reports creation.
-func Load(path string) (Config, bool, error) {
-	data, err := os.ReadFile(path)
+// Store reads and writes the config file.
+type Store struct{ Path string }
+
+// Load reads the config. If it does not exist, defaults are written first so the generated
+// websocket password stays stable across runs. An invalid file is replaced by defaults rather
+// than locking a non-technical user out of the app.
+func (s Store) Load() (Config, error) {
+	data, err := os.ReadFile(s.Path)
 	if errors.Is(err, os.ErrNotExist) {
 		cfg := Default()
-		if err := Save(path, cfg); err != nil {
-			return Config{}, false, err
-		}
-		return cfg, true, nil
+		return cfg, s.Save(cfg)
 	}
 	if err != nil {
-		return Config{}, false, err
+		return Config{}, err
 	}
 
 	// Start from defaults so fields missing from an older file keep sane values.
 	cfg := Default()
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return Config{}, false, fmt.Errorf("parse %s: %w", path, err)
+	if err := json.Unmarshal(data, &cfg); err != nil || cfg.Validate() != nil {
+		cfg = Default()
+		return cfg, s.Save(cfg)
 	}
-	return cfg, false, nil
+	if cfg.ServerURL == "" {
+		cfg.ServerURL = DefaultServerURL
+	}
+	return cfg, nil
 }
 
-// Save writes cfg to path. It holds the websocket password, so it is only readable by the user.
-func Save(path string, cfg Config) error {
+// Save writes cfg. It holds the websocket password, so it is only readable by the user.
+func (s Store) Save(cfg Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	return writePrivate(path, append(data, '\n'))
+	return writePrivate(s.Path, append(data, '\n'))
 }
 
 // writePrivate atomically writes a file readable only by the current user.

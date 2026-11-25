@@ -18,6 +18,12 @@ var User = map[string]any{
 	"streamKey": "key-abc123",
 }
 
+// GoogleClientID and WebsiteURL are what the fake advertises in its client config.
+const (
+	GoogleClientID = "test-client.apps.googleusercontent.com"
+	WebsiteURL     = "https://vod.example.com"
+)
+
 // Call is a request the fake received.
 type Call struct {
 	Method string
@@ -40,6 +46,8 @@ type Backend struct {
 	JobStates map[string]string
 	// FailSave makes save-by-markers fail with 500.
 	FailSave bool
+	// RTMPURL is the ingest URL advertised in the client config; empty lets clients derive it.
+	RTMPURL string
 
 	access    map[string]bool
 	refresh   map[string]bool
@@ -134,6 +142,11 @@ func (b *Backend) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.URL.Path {
+	case "/api/v1/client/config":
+		reply(w, http.StatusOK, "Client configuration retrieved", map[string]any{
+			"googleClientId": GoogleClientID, "rtmpUrl": b.RTMPURL, "websiteUrl": WebsiteURL,
+		})
+		return
 	case "/api/v1/users/login":
 		token, _ := body["token"].(string)
 		if !b.ValidIDTokens[token] {

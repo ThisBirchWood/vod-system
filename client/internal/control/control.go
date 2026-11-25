@@ -1,6 +1,6 @@
-// Package control lets other invocations of vod-client trigger actions in the running instance
-// over a private Unix socket. Binding "vod-client clip" to a desktop shortcut is how hotkeys work
-// on Wayland, where applications cannot grab keys globally.
+// Package control keeps vod-client to a single instance. The running instance listens on a
+// private local socket; launching the app again asks it to show its window instead of starting a
+// second copy that would fight over OBS and the hotkeys.
 package control
 
 import (
@@ -31,8 +31,14 @@ type Response struct {
 // Handler performs an action and returns a message describing the result.
 type Handler func(ctx context.Context, req Request) (string, error)
 
+// ActionShow asks the running instance to show its window.
+const ActionShow = "show"
+
+// ErrAlreadyRunning means another instance owns the socket.
+var ErrAlreadyRunning = errors.New("another vod-client instance is already running")
+
 // ErrNotRunning means no vod-client instance is listening.
-var ErrNotRunning = errors.New("vod-client is not running (start it with `vod-client run`)")
+var ErrNotRunning = errors.New("vod-client is not running")
 
 // SocketPath returns the default control socket location.
 func SocketPath() (string, error) {
@@ -60,7 +66,7 @@ func Listen(path string) (*Server, error) {
 	}
 	if conn, err := net.DialTimeout("unix", path, time.Second); err == nil {
 		conn.Close()
-		return nil, errors.New("another vod-client instance is already running")
+		return nil, ErrAlreadyRunning
 	}
 	_ = os.Remove(path)
 

@@ -126,7 +126,7 @@ func TestClip(t *testing.T) {
 	if b.titles[0] != "Clip 2026-11-25 20:30:00" {
 		t.Errorf("title = %q", b.titles[0])
 	}
-	if !strings.Contains(msg, "45s") {
+	if msg != "Saving the last 45 seconds" {
 		t.Errorf("msg = %q", msg)
 	}
 	if !n.has("Clipping") || !n.has("Clip saved") {
@@ -163,7 +163,7 @@ func TestClipNotLive(t *testing.T) {
 	if _, err := a.Clip(context.Background()); err == nil {
 		t.Fatal("expected an error")
 	}
-	if !n.has("Clip failed: you are not live yet") {
+	if !n.has("Clip failed: You're not live yet") {
 		t.Errorf("notifications = %v", n.all())
 	}
 }
@@ -171,7 +171,7 @@ func TestClipNotLive(t *testing.T) {
 func TestSessionExpiredMessage(t *testing.T) {
 	b, n := &fakeBackend{clipErr: api.ErrNotAuthenticated}, &recorder{}
 	newActions(b, n).Clip(context.Background())
-	if !n.has("Clip failed: session expired; run `vod-client login`") {
+	if !n.has("Clip failed: Your session has expired. Sign in again.") {
 		t.Errorf("notifications = %v", n.all())
 	}
 }
@@ -328,5 +328,31 @@ func TestConcurrentSectionPressesAreSerialised(t *testing.T) {
 		if s[1] != s[0]+1 {
 			t.Errorf("save %v does not pair adjacent markers", s)
 		}
+	}
+}
+
+func TestFormatSeconds(t *testing.T) {
+	for in, want := range map[float64]string{15: "15 seconds", 30: "30 seconds", 60: "1 minute", 120: "2 minutes", 90: "1m 30s", 180: "3 minutes"} {
+		if got := formatSeconds(in); got != want {
+			t.Errorf("formatSeconds(%v) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestSetClipSecondsAndInSection(t *testing.T) {
+	b, n := &fakeBackend{streamID: 1}, &recorder{}
+	a := newActions(b, n)
+	a.SetClipSeconds(120)
+	a.Clip(context.Background())
+	a.Wait()
+	if b.clips[0] != 120 {
+		t.Errorf("clip length = %v, want 120", b.clips[0])
+	}
+	if a.InSection() {
+		t.Error("no section yet")
+	}
+	a.ToggleSection(context.Background())
+	if !a.InSection() {
+		t.Error("section should be in progress")
 	}
 }

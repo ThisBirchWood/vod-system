@@ -42,15 +42,33 @@ const (
 	challenge = "Y2hhbGxlbmdl"
 )
 
-// New starts a fake OBS. An empty password disables authentication.
+// New starts a fake OBS on a random port. An empty password disables authentication.
 func New(password string) *Server {
-	s := &Server{
+	s := newServer(password)
+	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
+	return s
+}
+
+// Listen starts a fake OBS on addr, e.g. "127.0.0.1:4455", like a real OBS would.
+func Listen(addr, password string) (*Server, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	s := newServer(password)
+	s.Server = httptest.NewUnstartedServer(http.HandlerFunc(s.serve))
+	s.Server.Listener.Close()
+	s.Server.Listener = ln
+	s.Server.Start()
+	return s, nil
+}
+
+func newServer(password string) *Server {
+	return &Server{
 		Password:   password,
 		inputKinds: []string{"pipewire-desktop-capture-source", "xshm_input_v2", "ffmpeg_source"},
 		Fail:       map[string]int{},
 	}
-	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
-	return s
 }
 
 // URL returns the server's ws:// URL.

@@ -1,109 +1,98 @@
 # VoD Client
 
-A desktop companion for the VoD system that works like NVIDIA ShadowPlay. It keeps OBS streaming to
-your VoD server in the background, and global hotkeys capture what just happened.
+The VoD system's desktop app. It works like NVIDIA ShadowPlay: OBS keeps streaming to your VoD
+server in the background, and a key press saves the moment that just happened.
 
-On launch it:
+## For users
 
-1. logs you in with Google (once; the session is then refreshed automatically),
-2. installs OBS Studio if it is missing,
-3. starts OBS minimised to the tray, points it at your VoD server's RTMP ingest with your stream
-   key, and starts streaming,
-4. listens for hotkeys until you press Ctrl+C.
+1. Download **VoD-Client.exe** (Windows) or **VoD-Client-x86_64.AppImage** (Linux) from the
+   Releases page.
+2. Open it. On Linux, first mark the file as executable: right-click → Properties → "Allow
+   executing", or run `chmod +x VoD-Client-x86_64.AppImage`.
+3. Click **Sign in with Google**.
+4. If OBS Studio isn't installed, click **Install OBS Studio**.
 
-| Action  | Default   | What it does                                                                     |
-|---------|-----------|----------------------------------------------------------------------------------|
-| Clip    | `Alt+F10` | Saves the last `clip_seconds` (default 30s) as a clip, like instant replay       |
-| Section | `Alt+F9`  | First press marks a start, second press saves everything since as a VoD          |
-| Marker  | `Alt+F11` | Drops a marker on the stream                                                     |
+That's it. You're live, and these hotkeys work from any game or app:
 
-A desktop notification confirms each action and tells you when the server has finished processing.
+| Hotkey    | What it does                                                        |
+|-----------|---------------------------------------------------------------------|
+| `Alt+F10` | Save the last 30 seconds as a clip                                  |
+| `Alt+F9`  | Start a section; press again to save everything since as a video    |
+| `Alt+F11` | Add a marker                                                        |
 
-## Building
+A notification confirms each one. Clip length, hotkeys and start-up behaviour are under
+**Settings**. Closing the window keeps VoD Client running in the tray, so the hotkeys keep
+working. VoD Client opens automatically when you sign in to your computer (you can turn this off
+in Settings).
+
+On Wayland desktops (GNOME, KDE Plasma), your desktop asks once whether to allow VoD Client's
+shortcuts, and you change them in its keyboard settings.
+
+## For maintainers
+
+### Server setup (once)
+
+- In the Google Cloud console, add `http://localhost:53682/callback` as an **Authorised redirect
+  URI** on the OAuth client the backend uses (`GOOGLE_CLIENT_ID`). The app signs in through that
+  client, so it needs no secret of its own.
+- Optionally set `RTMP_PUBLIC_URL` in the backend's `.env` if RTMP ingest isn't at
+  `rtmp://<server host>:1935/live`.
+
+The app gets the Google client ID, RTMP URL and website address from the public
+`GET /api/v1/client/config` endpoint, so none of them are built in.
+
+### Publishing a release
+
+1. Set the repository variable `VOD_SERVER_URL` to the backend's address, e.g.
+   `https://vod.example.com`. It's baked into the app, so users never type it.
+2. Push a tag:
+
+   ```bash
+   git tag client-v1.0.0 && git push origin client-v1.0.0
+   ```
+
+`.gitea/workflows/client-release.yml` then builds both downloads and attaches them to a Gitea
+release.
+
+### Building locally
 
 ```bash
 cd client
-go build -o vod-client ./cmd/vod-client
+make appimage windows VERSION=1.0.0 SERVER_URL=https://vod.example.com   # → dist/
 ```
 
-Global hotkeys on Linux and macOS use cgo. On Linux, install the X11 headers first
-(`apt install libx11-dev`). A `CGO_ENABLED=0` build still works, but without hotkeys: use the
-commands below instead.
+Building needs Go 1.24+ and cgo. For Linux, install
+`gcc libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev`. Windows builds cross-compile with
+`gcc-mingw-w64-x86-64`. Builds without `SERVER_URL` ask for a server on first launch, which is
+handy for development.
 
-## Setup
+macOS builds should work (`go build ./cmd/vod-client` on a Mac), but they are untested and not
+part of the release yet.
 
-The client signs in with the same Google OAuth client as the web frontend.
+### How it works
 
-1. In the Google Cloud console, open the OAuth client the backend uses (`GOOGLE_CLIENT_ID`) and add
-   `http://localhost:53682/callback` as an **Authorised redirect URI**. Use a different port by
-   setting `oauth_redirect_port`.
-2. Run the client once and point it at your server:
+| Package            | Responsibility                                                                  |
+|--------------------|---------------------------------------------------------------------------------|
+| `internal/ui`      | Fyne window, setup screens, settings, tray menu                                 |
+| `internal/app`     | `Controller`: the sign-in → OBS → live state machine the UI renders             |
+| `internal/api`     | Backend client; bearer access token, refresh-token rotation                     |
+| `internal/auth`    | Google sign-in through the browser and a loopback page                          |
+| `internal/obs`     | Find, install (Flatpak/apt/dnf/pacman/zypper, winget, Homebrew), launch and drive OBS over obs-websocket v5 |
+| `internal/hotkey`  | Global hotkeys: key grabs on X11/Windows/macOS, the GlobalShortcuts portal on Wayland |
+| `internal/desktop` | Start on login, the Linux applications menu entry, tray detection               |
+| `internal/control` | Single instance: a second launch brings up the first one's window               |
 
-   ```bash
-   vod-client --server https://vod.example.com --google-client-id <GOOGLE_CLIENT_ID>
-   ```
+Settings, the session and a log (`vod-client.log`, useful in bug reports) are stored in
+`~/.config/vod-client`, `%AppData%\vod-client` or `~/Library/Application Support/vod-client`.
 
-   Both values are saved, so after this a bare `vod-client` is enough.
-
-## Commands
-
-```
-vod-client [run]           log in, launch OBS, stream and listen for hotkeys
-vod-client login | logout
-vod-client clip            same as the clip hotkey
-vod-client mark [message]  same as the marker hotkey, with an optional label
-vod-client section         same as the section hotkey
-vod-client status
-vod-client config          print the config file location and contents
-```
-
-`clip`, `mark` and `section` send the action to the running instance over a private local socket.
-
-### Wayland
-
-Wayland does not let applications grab keys globally, so the built-in hotkeys only work on X11,
-Windows and macOS. On GNOME, KDE, Hyprland and so on, bind the commands to shortcuts in your
-desktop's keyboard settings instead, e.g. `Alt+F10 → vod-client clip`.
-
-## Configuration
-
-The config lives in `~/.config/vod-client/config.json` (or `%AppData%\vod-client` /
-`~/Library/Application Support/vod-client`). It is created on the first run.
-
-| Key                     | Default                    | Notes                                                       |
-|-------------------------|----------------------------|-------------------------------------------------------------|
-| `server_url`            | `http://localhost:8080`    | Backend base URL                                            |
-| `rtmp_url`              | `rtmp://<server host>:1935/live` | Override if ingest is on a different host or port     |
-| `google_client_id`      |                            | The backend's `GOOGLE_CLIENT_ID`                            |
-| `oauth_redirect_port`   | `53682`                    | Must match the registered redirect URI                      |
-| `clip_seconds`          | `30`                       | Up to 180, the backend's limit                              |
-| `hotkeys.*`             | see above                  | e.g. `ctrl+shift+m`; `""` disables one                      |
-| `obs.path`              | auto-detected              | Path to the OBS executable                                  |
-| `obs.websocket_port`    | `4455`                     |                                                             |
-| `obs.websocket_password`| random                     | Written into OBS's obs-websocket settings                   |
-| `obs.auto_install`      | `true`                     | Same as passing `--no-install` when false                   |
-| `obs.auto_start_stream` | `true`                     | Also restarts the stream if it drops                        |
-| `obs.close_on_exit`     | `true`                     | Stop streaming and quit OBS on exit, if the client started it |
-
-The refresh token is kept in `session.json` next to the config, readable only by you.
-
-### How OBS is managed
-
-- **Install:** Flatpak (user level, no root) when available. Otherwise apt, dnf, pacman or zypper
-  through sudo/pkexec. winget on Windows, Homebrew on macOS.
-- **Websocket:** before launching OBS, the client enables obs-websocket (OBS 30+) with its own
-  password. If OBS is already running, the client attaches to it and leaves it running on exit. In
-  that case obs-websocket must already be enabled with the configured port and password.
-- **Scene:** if the current scene is empty, a screen capture source is added so a fresh install
-  doesn't stream a black screen. Scenes you have set up are left alone.
-
-## Tests
+### Tests
 
 ```bash
 go test -race ./...
 ```
 
-The tests run against an in-memory fake of the backend (`internal/api/apitest`) and a fake
-obs-websocket server (`internal/obs/obstest`). `TestRegisterX11` grabs a real key on an X server
-and is skipped without `DISPLAY`. To run it, use `xvfb-run go test ./internal/hotkey/`, with
-`xdotool` installed if you also want it to press the key.
+The tests run against an in-memory fake backend (`internal/api/apitest`), a fake obs-websocket
+server (`internal/obs/obstest`) and a fake GlobalShortcuts portal on a private D-Bus (skipped
+without `dbus-daemon`). The controller tests launch the test binary itself as a stand-in for OBS,
+which covers install, launch and shutdown. The UI tests run headless on Fyne's test driver.
+`SHOTS=/tmp/shots go test -run TestScreens ./internal/ui` renders every screen to PNG.

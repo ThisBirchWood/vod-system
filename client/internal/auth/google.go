@@ -25,6 +25,10 @@ import (
 	"time"
 )
 
+// DefaultPort is the loopback port for the login callback. http://localhost:53682/callback must
+// be an authorised redirect URI on the Google OAuth client.
+const DefaultPort = 53682
+
 // DefaultAuthEndpoint is Google's OAuth 2.0 authorisation endpoint.
 const DefaultAuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth"
 

@@ -1,14 +1,6 @@
-// Command vod-client streams to the VoD system through OBS and captures clips, markers and
-// sections with global hotkeys, in the style of NVIDIA ShadowPlay.
-//
-//	vod-client [run]          log in, launch OBS, start streaming and listen for hotkeys
-//	vod-client login          log in through the browser
-//	vod-client logout         end the session
-//	vod-client clip           save the last few seconds of the stream
-//	vod-client mark [message] drop a marker on the stream
-//	vod-client section        start, or finish and save, a section
-//	vod-client status         show what the running instance is doing
-//	vod-client config         show the config file location and contents
+// Command vod-client is the VoD system's desktop app. It keeps OBS streaming to the VoD server in
+// the background and saves clips, sections and markers with global hotkeys, in the style of
+// NVIDIA ShadowPlay.
 package main
 
 import (
@@ -17,275 +9,138 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
+	"net/url"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"strings"
-	"syscall"
 	"time"
 
-	"golang.design/x/hotkey/mainthread"
+	"fyne.io/fyne/v2"
+	fyneapp "fyne.io/fyne/v2/app"
 
-	"gitea.defaoite.dev/dylan/vod-system/client/internal/api"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/app"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/auth"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/config"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/control"
+	"gitea.defaoite.dev/dylan/vod-system/client/internal/desktop"
+	"gitea.defaoite.dev/dylan/vod-system/client/internal/hotkey"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/notify"
 	"gitea.defaoite.dev/dylan/vod-system/client/internal/obs"
+	"gitea.defaoite.dev/dylan/vod-system/client/internal/ui"
 )
 
 func main() {
-	// macOS delivers hotkey events on the main thread, so the program runs beside its event loop.
-	code := 0
-	mainthread.Init(func() { code = run(os.Args[1:], os.Stdout, os.Stderr) })
-	os.Exit(code)
-}
+	hidden := flag.Bool("hidden", false, "start in the system tray (used when starting at login)")
+	flag.Parse()
 
-const usage = `usage: vod-client [command] [flags]
-
-commands:
-  run             log in, launch OBS, stream and listen for hotkeys (default)
-  login           log in through the browser
-  logout          end the session
-  clip            save the last few seconds of the stream
-  mark [message]  drop a marker on the stream
-  section         start, or finish and save, a section
-  status          show what the running instance is doing
-  config          show the config file location and contents
-
-run "vod-client <command> -h" for a command's flags
-`
-
-func run(args []string, stdout, stderr io.Writer) int {
-	cmd := "run"
-	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
-		cmd, args = args[0], args[1:]
-	}
-
-	var err error
-	switch cmd {
-	case "run":
-		err = cmdRun(args, stdout)
-	case "login":
-		err = cmdLogin(args, stdout)
-	case "logout":
-		err = cmdLogout(args, stdout)
-	case app.ActionClip, app.ActionSection, app.ActionStatus:
-		err = cmdControl(cmd, "", stdout)
-	case app.ActionMarker:
-		err = cmdControl(cmd, strings.Join(args, " "), stdout)
-	case "config":
-		err = cmdConfig(args, stdout)
-	case "help", "-h", "--help":
-		fmt.Fprint(stdout, usage)
-	default:
-		fmt.Fprintf(stderr, "unknown command %q\n\n%s", cmd, usage)
-		return 2
-	}
-
-	if errors.Is(err, flag.ErrHelp) {
-		return 0
-	}
+	dir, err := config.Dir()
 	if err != nil {
-		fmt.Fprintln(stderr, "vod-client:", err)
-		return 1
+		log.Fatalf("no config directory: %v", err)
 	}
-	return 0
-}
+	logOut := openLog(filepath.Join(dir, "vod-client.log"))
+	logger := log.New(logOut, "", log.LstdFlags)
+	logger.Printf("VoD Client %s starting", config.Version)
 
-// common holds flags shared by commands that talk to the backend.
-type common struct {
-	configPath string
-	server     string
-	clientID   string
-}
-
-func (c *common) register(fs *flag.FlagSet) {
-	defaultPath := ""
-	if dir, err := config.Dir(); err == nil {
-		defaultPath = filepath.Join(dir, "config.json")
-	}
-	fs.StringVar(&c.configPath, "config", defaultPath, "config file path")
-	fs.StringVar(&c.server, "server", "", "backend URL, saved to the config (e.g. https://vod.example.com)")
-	fs.StringVar(&c.clientID, "google-client-id", "", "Google OAuth client ID used by the backend, saved to the config")
-}
-
-// load reads the config, applying and persisting any flag overrides.
-func (c *common) load(out io.Writer) (config.Config, error) {
-	cfg, created, err := config.Load(c.configPath)
+	// One instance at a time: a second launch just brings the first one's window forward.
+	socket, err := control.SocketPath()
 	if err != nil {
-		return cfg, err
+		logger.Fatalf("control socket: %v", err)
 	}
-	if created {
-		fmt.Fprintf(out, "created config at %s\n", c.configPath)
-	}
-	changed := false
-	if c.server != "" && c.server != cfg.ServerURL {
-		cfg.ServerURL, changed = strings.TrimRight(c.server, "/"), true
-	}
-	if c.clientID != "" && c.clientID != cfg.GoogleClientID {
-		cfg.GoogleClientID, changed = c.clientID, true
-	}
-	if err := cfg.Validate(); err != nil {
-		return cfg, fmt.Errorf("%s: %w", c.configPath, err)
-	}
-	if changed {
-		if err := config.Save(c.configPath, cfg); err != nil {
-			return cfg, err
+	single, err := control.Listen(socket)
+	if errors.Is(err, control.ErrAlreadyRunning) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, err := control.Send(ctx, socket, control.Request{Action: control.ActionShow}); err != nil {
+			logger.Printf("could not reach the running instance: %v", err)
 		}
+		return
 	}
-	return cfg, nil
-}
+	if err != nil {
+		logger.Printf("single-instance check unavailable: %v", err)
+	}
 
-func (c *common) client(cfg config.Config) (*api.Client, error) {
-	store := config.NewSessionStore(filepath.Join(filepath.Dir(c.configPath), "session.json"))
-	return api.New(cfg.ServerURL, store)
-}
+	a := fyneapp.NewWithID(config.AppID)
 
-func googleLogin(cfg config.Config, out io.Writer) func(context.Context) (string, error) {
-	return auth.GoogleLogin{
-		ClientID: cfg.GoogleClientID,
-		Port:     cfg.OAuthRedirectPort,
-		Prompt: func(url string) {
-			fmt.Fprintf(out, "opening your browser to log in; if it does not open, visit:\n  %s\n", url)
+	store := config.Store{Path: filepath.Join(dir, "config.json")}
+	cfg, err := store.Load()
+	if err != nil {
+		logger.Printf("load config: %v; using defaults", err)
+		cfg = config.Default()
+	}
+
+	var autostart func(bool) error
+	if env, err := desktop.HostEnv(); err != nil {
+		logger.Printf("desktop integration unavailable: %v", err)
+	} else {
+		if err := env.InstallMenuEntry(ui.IconPNG()); err != nil {
+			logger.Printf("menu entry: %v", err)
+		}
+		// Re-sync every launch: the app (or AppImage) may have moved since the entry was written.
+		if err := env.SetAutostart(cfg.StartOnLogin); err != nil {
+			logger.Printf("autostart: %v", err)
+		}
+		autostart = env.SetAutostart
+	}
+
+	ctl := app.NewController(cfg, app.Deps{
+		SaveConfig: store.Save,
+		Sessions:   config.NewSessionStore(filepath.Join(dir, "session.json")),
+		Login: func(ctx context.Context, clientID string) (string, error) {
+			return auth.GoogleLogin{
+				ClientID: clientID,
+				Port:     auth.DefaultPort,
+				OpenBrowser: func(raw string) error {
+					u, err := url.Parse(raw)
+					if err != nil {
+						return err
+					}
+					return a.OpenURL(u)
+				},
+			}.IDToken(ctx)
 		},
-	}.IDToken
+		System:    obs.HostSystem(logOut),
+		Hotkeys:   hotkey.NewManager(config.AppID),
+		Notifier:  notify.Func(func(title, body string) { a.SendNotification(fyne.NewNotification(title, body)) }),
+		Autostart: autostart,
+		Logf:      logger.Printf,
+	})
+
+	window := ui.New(a, ctl, ui.Options{TrayAvailable: desktop.TrayAvailable(), StartHidden: *hidden})
+
+	if single != nil {
+		defer single.Close()
+		go single.Serve(context.Background(), func(_ context.Context, req control.Request) (string, error) {
+			if req.Action != control.ActionShow {
+				return "", fmt.Errorf("unknown action %q", req.Action)
+			}
+			fyne.Do(window.ShowWindow)
+			return "shown", nil
+		})
+	}
+
+	a.Lifecycle().SetOnStopped(func() {
+		logger.Printf("shutting down")
+		ctl.Shutdown()
+	})
+	ctl.Start()
+	window.Run()
 }
 
-func signalContext() (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-}
+// maxLogSize is when the log is rotated, keeping one previous file.
+const maxLogSize = 1 << 20
 
-func cmdRun(args []string, out io.Writer) error {
-	fs := flag.NewFlagSet("run", flag.ContinueOnError)
-	var c common
-	c.register(fs)
-	noInstall := fs.Bool("no-install", false, "do not install OBS if it is missing")
-	if err := fs.Parse(args); err != nil {
-		return err
+// openLog opens the log file for appending, rotating it when large. Users can send it along when
+// something goes wrong. If it can't be opened, logs go to stderr.
+func openLog(path string) io.Writer {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return os.Stderr
 	}
-
-	cfg, err := c.load(out)
+	if info, err := os.Stat(path); err == nil && info.Size() > maxLogSize {
+		os.Rename(path, path+".1")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
-		return err
+		return os.Stderr
 	}
-	client, err := c.client(cfg)
-	if err != nil {
-		return err
-	}
-	socket, err := control.SocketPath()
-	if err != nil {
-		return err
-	}
-
-	logf := func(format string, a ...any) {
-		fmt.Fprintf(out, "%s %s\n", time.Now().Format("15:04:05"), fmt.Sprintf(format, a...))
-	}
-	runner := &app.Runner{
-		Config:     cfg,
-		API:        client,
-		Login:      googleLogin(cfg, out),
-		System:     obs.HostSystem(out),
-		Notifier:   notify.Desktop{AppName: "VoD Client"},
-		SocketPath: socket,
-		NoInstall:  *noInstall,
-		Logf:       logf,
-	}
-
-	ctx, stop := signalContext()
-	defer stop()
-	err = runner.Run(ctx)
-	logf("stopped")
-	return err
-}
-
-func cmdLogin(args []string, out io.Writer) error {
-	fs := flag.NewFlagSet("login", flag.ContinueOnError)
-	var c common
-	c.register(fs)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	cfg, err := c.load(out)
-	if err != nil {
-		return err
-	}
-	client, err := c.client(cfg)
-	if err != nil {
-		return err
-	}
-
-	ctx, stop := signalContext()
-	defer stop()
-	token, err := googleLogin(cfg, out)(ctx)
-	if err != nil {
-		return err
-	}
-	if err := client.Login(ctx, token); err != nil {
-		return err
-	}
-	user, err := client.Me(ctx)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "logged in as %s\n", user.Username)
-	return nil
-}
-
-func cmdLogout(args []string, out io.Writer) error {
-	fs := flag.NewFlagSet("logout", flag.ContinueOnError)
-	var c common
-	c.register(fs)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	cfg, err := c.load(out)
-	if err != nil {
-		return err
-	}
-	client, err := c.client(cfg)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if err := client.Logout(ctx); err != nil {
-		fmt.Fprintf(out, "warning: could not revoke the session on the server: %v\n", err)
-	}
-	fmt.Fprintln(out, "logged out")
-	return nil
-}
-
-func cmdControl(action, arg string, out io.Writer) error {
-	socket, err := control.SocketPath()
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-	msg, err := control.Send(ctx, socket, control.Request{Action: action, Arg: arg})
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(out, msg)
-	return nil
-}
-
-func cmdConfig(args []string, out io.Writer) error {
-	fs := flag.NewFlagSet("config", flag.ContinueOnError)
-	var c common
-	c.register(fs)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if _, err := c.load(out); err != nil {
-		return err
-	}
-	data, err := os.ReadFile(c.configPath)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "%s\n\n%s", c.configPath, data)
-	return nil
+	return io.MultiWriter(f, os.Stderr)
 }

@@ -1,0 +1,86 @@
+name: Client release
+
+# Push a tag like client-v1.0.0 to publish VoD Client downloads on the repository's Releases page:
+#
+#   git tag client-v1.0.0 && git push origin client-v1.0.0
+#
+# Requires the VOD_SERVER_URL repository variable (e.g. https://vod.example.com). It is baked
+# into the app so users only ever click "Sign in with Google".
+
+on:
+  push:
+    tags:
+      - "client-v*"
+
+jobs:
+  release:
+    name: Build and publish downloads
+    runs-on: ubuntu-latest
+    # Built on Ubuntu 22.04 so the AppImage's glibc requirement (2.35) is old enough to run on
+    # every current desktop distribution, not just the newest.
+    container:
+      image: ghcr.io/catthehacker/ubuntu:act-22.04
+    defaults:
+      run:
+        working-directory: client
+    env:
+      SERVER_URL: ${{ vars.VOD_SERVER_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Check configuration
+        run: |
+          if [ -z "$SERVER_URL" ]; then
+            echo "Set the VOD_SERVER_URL repository variable to your VoD server's address." >&2
+            exit 1
+          fi
+          tag="${{ gitea.ref_name }}"
+          echo "VERSION=${tag#client-}" >> "$GITHUB_ENV"
+
+      - name: Set up Go
+        uses: https://github.com/actions/setup-go@v5
+        with:
+          go-version-file: client/go.mod
+          cache-dependency-path: client/go.sum
+
+      - name: Install build dependencies
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends \
+            gcc libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev \
+            gcc-mingw-w64-x86-64 file jq curl
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build Linux AppImage
+        run: make appimage VERSION="$VERSION" SERVER_URL="$SERVER_URL"
+
+      - name: Build Windows executable
+        run: make windows VERSION="$VERSION" SERVER_URL="$SERVER_URL"
+
+      - name: Publish release
+        env:
+          # The automatic token can publish releases on Gitea 1.20+; set a RELEASE_TOKEN secret
+          # with repository write access if yours cannot.
+          TOKEN: ${{ secrets.RELEASE_TOKEN || gitea.token }}
+          API: ${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}
+          TAG: ${{ gitea.ref_name }}
+        run: |
+          set -eu
+          auth="Authorization: token $TOKEN"
+          id=$(curl -fsS -H "$auth" "$API/releases/tags/$TAG" | jq -r .id 2>/dev/null || true)
+          if [ -z "$id" ] || [ "$id" = "null" ]; then
+            body=$(jq -n --arg tag "$TAG" --arg name "VoD Client $VERSION" \
+              --arg body "Download **VoD-Client.exe** for Windows or **VoD-Client-x86_64.AppImage** for Linux, then open it and sign in. No installation needed." \
+              '{tag_name: $tag, name: $name, body: $body}')
+            id=$(curl -fsS -X POST -H "$auth" -H "Content-Type: application/json" -d "$body" "$API/releases" | jq -r .id)
+          fi
+          for f in dist/VoD-Client-x86_64.AppImage dist/VoD-Client.exe; do
+            name=$(basename "$f")
+            curl -fsS -X POST -H "$auth" -F "attachment=@$f" "$API/releases/$id/assets?name=$name" > /dev/null
+            echo "uploaded $name"
+          done

@@ -73,3 +73,36 @@ func TestRegisterWithoutSupportFailsCleanly(t *testing.T) {
 		t.Fatalf("got %v, want ErrUnavailable", err)
 	}
 }
+
+func TestDisplayAndPortalTrigger(t *testing.T) {
+	tests := []struct {
+		in, display, portal string
+	}{
+		{"alt+f10", "Alt+F10", "ALT+F10"},
+		{"ctrl+shift+m", "Ctrl+Shift+M", "CTRL+SHIFT+m"},
+		{"alt+space", "Alt+Space", "ALT+Space"},
+		{"ctrl+return", "Ctrl+Return", "CTRL+Return"},
+		{"super+1", superName + "+1", "LOGO+1"},
+	}
+	for _, tt := range tests {
+		b, err := Parse(tt.in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := b.Display(); got != tt.display {
+			t.Errorf("Display(%s) = %q, want %q", tt.in, got, tt.display)
+		}
+		if got := b.PortalTrigger(); got != tt.portal {
+			t.Errorf("PortalTrigger(%s) = %q, want %q", tt.in, got, tt.portal)
+		}
+	}
+}
+
+func TestModifierDisplay(t *testing.T) {
+	if got := (Ctrl | Shift).Display(); got != "Ctrl+Shift" {
+		t.Errorf("got %q", got)
+	}
+	if got := Modifier(0).Display(); got != "" {
+		t.Errorf("got %q", got)
+	}
+}

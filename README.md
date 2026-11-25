@@ -62,6 +62,10 @@ POSTGRES_DB=vodSystem
 # The URLs the frontend will use to reach itself and the backend
 FRONTEND_URL=http://localhost:5173
 BACKEND_URL=http://localhost:8080
+
+# Optional: the RTMP ingest URL the desktop client should stream to,
+# if it isn't rtmp://<backend host>:1935/live
+RTMP_PUBLIC_URL=
 ```
 
 ### 2. Start the application
@@ -100,7 +104,9 @@ Then run the backend and frontend separately in your usual workflow.
 
 ## Desktop Client
 
-`client/` contains **vod-client**, a Go desktop companion that installs and runs OBS in the background, streams to the VoD system, and captures clips, markers and sections with ShadowPlay-style hotkeys (`Alt+F10` to clip, `Alt+F9` to start/stop a section). See [client/README.md](client/README.md).
+**VoD Client** (`client/`) is a desktop app for Windows and Linux that works like NVIDIA ShadowPlay. Users download one file, sign in with Google, and press `Alt+F10` to save the last 30 seconds of gameplay as a clip. It installs and runs OBS in the background and streams to the VoD system automatically.
+
+Releases are published by pushing a `client-v*` tag. Before the first release, add `http://localhost:53682/callback` as an authorised redirect URI on your Google OAuth client and set the `VOD_SERVER_URL` repository variable. See [client/README.md](client/README.md).
 
 ---
 

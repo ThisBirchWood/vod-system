@@ -46,5 +46,5 @@ frontend/.flowbite-react
 generated
 
 # Go client
-/client/vod-client
-/client/vod-client.exe
+/client/dist/
+/client/cmd/vod-client/rsrc_windows_*.syso

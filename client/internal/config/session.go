@@ -40,7 +40,7 @@ func (s *SessionStore) Load() (Session, error) {
 	}
 	var sess Session
 	if err := json.Unmarshal(data, &sess); err != nil {
-		// A corrupt session is no worse than none: the user just logs in again.
+		// A corrupt session is no worse than none: the user just signs in again.
 		return Session{}, nil
 	}
 	return sess, nil

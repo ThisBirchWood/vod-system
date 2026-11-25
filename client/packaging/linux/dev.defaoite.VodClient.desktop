@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VoD Client
+Comment=Clip your stream with hotkeys
+Exec=vod-client
+Icon=dev.defaoite.VodClient
+Terminal=false
+Categories=AudioVideo;Video;Recorder;
+StartupNotify=false

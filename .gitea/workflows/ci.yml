@@ -71,11 +71,14 @@ jobs:
           go-version-file: client/go.mod
           cache-dependency-path: client/go.sum
 
-      - name: Install X11 headers
+      - name: Install GUI and D-Bus dependencies
         run: |
           SUDO=$(command -v sudo || true)
           $SUDO apt-get update
-          $SUDO apt-get install -y --no-install-recommends libx11-dev
+          # Fyne needs the GL/X11/Wayland headers; dbus-daemon lets the Wayland shortcut
+          # portal tests run against a private bus instead of skipping.
+          $SUDO apt-get install -y --no-install-recommends \
+            gcc libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev dbus
 
       - name: Vet
         run: go vet ./...
@@ -83,10 +86,13 @@ jobs:
       - name: Run tests
         run: go test -race ./...
 
-      - name: Check cross-platform builds
+      - name: Vet platform-specific code for Windows and macOS
+        # The GUI packages are platform-neutral Go but need cgo to cross-compile, which the
+        # release workflow does; this catches mistakes in the per-platform files quickly.
         run: |
-          GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/vod-client
-          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go vet ./...
+          pkgs=$(go list ./... | grep -v -e /internal/ui -e /cmd/)
+          GOOS=windows CGO_ENABLED=0 go vet $pkgs
+          GOOS=darwin CGO_ENABLED=0 go vet $pkgs
 
   build-and-push:
     name: Build and push images

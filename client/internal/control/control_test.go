@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 )
@@ -77,7 +76,7 @@ func TestSendNotRunning(t *testing.T) {
 func TestListenRefusesSecondInstance(t *testing.T) {
 	path := socketPath(t)
 	serve(t, path, func(context.Context, Request) (string, error) { return "", nil })
-	if _, err := Listen(path); err == nil || !strings.Contains(err.Error(), "already running") {
+	if _, err := Listen(path); !errors.Is(err, ErrAlreadyRunning) {
 		t.Fatalf("got %v, want already running", err)
 	}
 }

@@ -47,6 +47,8 @@ public class SecurityConfig {
                         // authenticated by the refresh token cookie, not the (possibly expired) access token
                         .requestMatchers("/api/v1/users/login", "/api/v1/users/refresh", "/api/v1/users/logout").permitAll()
                         .requestMatchers("/api/v1/stream/start", "/api/v1/stream/stop", "/api/v1/stream/heartbeat").permitAll()
+                        // the desktop client needs its config (incl. the Google client ID) before it can log in
+                        .requestMatchers(HttpMethod.GET, "/api/v1/client/config").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 401 rather than the default 403, so clients know to refresh their session

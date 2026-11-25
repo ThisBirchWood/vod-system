@@ -31,8 +31,9 @@ type Backend interface {
 
 // Actions performs the hotkey actions. It is safe for concurrent use.
 type Actions struct {
-	Backend     Backend
-	Notifier    notify.Notifier
+	Backend  Backend
+	Notifier notify.Notifier
+	// ClipSeconds is the initial clip length; change it later with SetClipSeconds.
 	ClipSeconds float64
 	// Now and PollInterval are overridable for tests.
 	Now          func() time.Time
@@ -53,15 +54,33 @@ func (a *Actions) now() time.Time {
 
 func (a *Actions) stamp() string { return a.now().Local().Format("2006-01-02 15:04:05") }
 
+// SetClipSeconds changes how far back later clips reach.
+func (a *Actions) SetClipSeconds(s float64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.ClipSeconds = s
+}
+
+// InSection reports whether a section has been started and not yet saved.
+func (a *Actions) InSection() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.sectionStart != nil
+}
+
 // Clip saves the last ClipSeconds of the stream, like ShadowPlay's instant replay.
 func (a *Actions) Clip(ctx context.Context) (string, error) {
+	a.mu.Lock()
+	seconds := a.ClipSeconds
+	a.mu.Unlock()
+
 	title := "Clip " + a.stamp()
-	uuid, err := a.Backend.Clip(ctx, a.ClipSeconds, title)
+	uuid, err := a.Backend.Clip(ctx, seconds, title)
 	if err != nil {
 		a.Notifier.Notify("Clip failed", describe(err))
 		return "", err
 	}
-	msg := fmt.Sprintf("Saving the last %gs", a.ClipSeconds)
+	msg := fmt.Sprintf("Saving the last %s", formatSeconds(seconds))
 	a.Notifier.Notify("Clipping", msg)
 	a.watch(uuid, "Clip saved", title, "Clip failed")
 	return msg, nil
@@ -205,13 +224,31 @@ func describe(err error) string {
 	var apiErr *api.Error
 	switch {
 	case errors.Is(err, api.ErrNotAuthenticated):
-		return "session expired; run `vod-client login`"
+		return "Your session has expired. Sign in again."
 	case errors.As(err, &apiErr) && apiErr.Status == 409:
-		return "you are not live yet (" + apiErr.Message + ")"
+		return "You're not live yet. Wait a few seconds after going live and try again."
 	default:
 		return err.Error()
 	}
 }
+
+// formatSeconds renders a clip length for people: "30 seconds", "2 minutes", "1m 30s".
+func formatSeconds(s float64) string {
+	d := time.Duration(s * float64(time.Second)).Round(time.Second)
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%d seconds", int(d.Seconds()))
+	case d%time.Minute == 0 && d == time.Minute:
+		return "1 minute"
+	case d%time.Minute == 0:
+		return fmt.Sprintf("%d minutes", int(d.Minutes()))
+	default:
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)
+	}
+}
+
+// FormatClipLength is formatSeconds for the UI.
+func FormatClipLength(s float64) string { return formatSeconds(s) }
 
 func firstNonEmpty(s ...string) string {
 	for _, v := range s {
@@ -220,4 +257,8 @@ func firstNonEmpty(s ...string) string {
 		}
 	}
 	return ""
+}
+
+func actionRequest(action, arg string) control.Request {
+	return control.Request{Action: action, Arg: arg}
 }

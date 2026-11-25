@@ -3,7 +3,10 @@ package api_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -266,5 +269,31 @@ func TestLogoutClearsSession(t *testing.T) {
 	c2, _ := api.New(b.URL, store)
 	if _, err := c2.Me(context.Background()); !errors.Is(err, api.ErrNotAuthenticated) {
 		t.Errorf("revoked token still worked: %v", err)
+	}
+}
+
+func TestClientConfig(t *testing.T) {
+	b := apitest.New()
+	defer b.Close()
+	b.Set(func(b *apitest.Backend) { b.RTMPURL = "rtmp://ingest.test/live" })
+	c, _ := api.New(b.URL, newStore(t))
+
+	cfg, err := c.ClientConfig(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GoogleClientID != apitest.GoogleClientID || cfg.RTMPURL != "rtmp://ingest.test/live" || cfg.WebsiteURL != apitest.WebsiteURL {
+		t.Errorf("config = %+v", cfg)
+	}
+}
+
+func TestClientConfigFromWrongServer(t *testing.T) {
+	notVod := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html>hello</html>"))
+	}))
+	defer notVod.Close()
+	c, _ := api.New(notVod.URL, newStore(t))
+	if _, err := c.ClientConfig(context.Background()); err == nil || !strings.Contains(err.Error(), "VoD server") {
+		t.Fatalf("got %v, want a friendly not-a-VoD-server error", err)
 	}
 }
