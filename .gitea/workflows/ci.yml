@@ -54,9 +54,43 @@ jobs:
           ./mvnw --batch-mode --no-transfer-progress verify
           -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false
 
+  client-tests:
+    name: Go client tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: Check out repository
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Set up Go
+        uses: https://github.com/actions/setup-go@v5
+        with:
+          go-version-file: client/go.mod
+          cache-dependency-path: client/go.sum
+
+      - name: Install X11 headers
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends libx11-dev
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -race ./...
+
+      - name: Check cross-platform builds
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/vod-client
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go vet ./...
+
   build-and-push:
     name: Build and push images
-    needs: [unit-tests, integration-tests]
+    needs: [unit-tests, integration-tests, client-tests]
     if: gitea.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 

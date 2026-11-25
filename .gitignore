@@ -44,3 +44,7 @@ build/
 frontend/.flowbite-react
 
 generated
+
+# Go client
+/client/vod-client
+/client/vod-client.exe

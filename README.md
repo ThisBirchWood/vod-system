@@ -98,6 +98,12 @@ Then run the backend and frontend separately in your usual workflow.
 
 ---
 
+## Desktop Client
+
+`client/` contains **vod-client**, a Go desktop companion that installs and runs OBS in the background, streams to the VoD system, and captures clips, markers and sections with ShadowPlay-style hotkeys (`Alt+F10` to clip, `Alt+F9` to start/stop a section). See [client/README.md](client/README.md).
+
+---
+
 ## API Reference
 
 A [Bruno](https://www.usebruno.com/) collection is included under `bruno/VoD-System/` with pre-configured requests covering all major endpoints. Import it directly into Bruno and point the `local` environment at `http://localhost:8080/api/v1`.

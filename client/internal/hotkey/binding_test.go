@@ -1,0 +1,75 @@
+package hotkey
+
+import (
+	"errors"
+	"testing"
+)
+
+func TestParse(t *testing.T) {
+	tests := []struct {
+		in   string
+		want Binding
+	}{
+		{"alt+f10", Binding{Alt, "f10"}},
+		{"Alt+F9", Binding{Alt, "f9"}},
+		{" ctrl + shift + m ", Binding{Ctrl | Shift, "m"}},
+		{"super+1", Binding{Super, "1"}},
+		{"cmd+option+space", Binding{Super | Alt, "space"}},
+		{"control+enter", Binding{Ctrl, "return"}},
+		{"win+esc", Binding{Super, "escape"}},
+		{"ctrl+alt+shift+super+f20", Binding{Ctrl | Alt | Shift | Super, "f20"}},
+	}
+	for _, tt := range tests {
+		got, err := Parse(tt.in)
+		if err != nil {
+			t.Errorf("Parse(%q): %v", tt.in, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("Parse(%q) = %+v, want %+v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestParseErrors(t *testing.T) {
+	for _, in := range []string{
+		"",          // nothing
+		"f10",       // bare key would be swallowed system wide
+		"alt+",      // no key
+		"hyper+f10", // unknown modifier
+		"alt+f21",   // unsupported key
+		"alt+alt+x", // repeated modifier
+		"alt+ctrl",  // modifier as key
+		"alt+f10+x", // key in modifier position
+	} {
+		if b, err := Parse(in); err == nil {
+			t.Errorf("Parse(%q) = %+v, want error", in, b)
+		}
+	}
+}
+
+func TestStringRoundTrips(t *testing.T) {
+	for _, in := range []string{"alt+f10", "ctrl+shift+m", "ctrl+alt+super+space", "shift+return"} {
+		b, err := Parse(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b.String() != in {
+			t.Errorf("String() = %q, want %q", b.String(), in)
+		}
+		again, _ := Parse(b.String())
+		if again != b {
+			t.Errorf("round trip of %q changed the binding", in)
+		}
+	}
+}
+
+func TestRegisterWithoutSupportFailsCleanly(t *testing.T) {
+	if Available() {
+		t.Skip("global hotkeys are built in")
+	}
+	_, err := Register(Binding{Alt, "f10"})
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("got %v, want ErrUnavailable", err)
+	}
+}
