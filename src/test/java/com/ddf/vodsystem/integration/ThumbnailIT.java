@@ -1,9 +1,9 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.Clip;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.entities.Vod;
-import com.ddf.vodsystem.services.media.ThumbnailService;
+import com.ddf.vodsystem.clip.Clip;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.vod.Vod;
+import com.ddf.vodsystem.media.ThumbnailService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.AopTestUtils;

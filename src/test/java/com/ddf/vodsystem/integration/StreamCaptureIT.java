@@ -1,10 +1,10 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.Clip;
-import com.ddf.vodsystem.entities.Marker;
-import com.ddf.vodsystem.entities.Stream;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.entities.Vod;
+import com.ddf.vodsystem.clip.Clip;
+import com.ddf.vodsystem.marker.Marker;
+import com.ddf.vodsystem.stream.Stream;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.vod.Vod;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -142,9 +142,9 @@ class StreamCaptureIT extends MediaTestSupport {
             Marker own = createMarker(caller, callersStream, first.plusSeconds(8));
 
             mockMvc.perform(saveByMarkersRequest(caller, foreign.getId(), own.getId()))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isForbidden());
             mockMvc.perform(saveByMarkersRequest(caller, own.getId(), foreign.getId()))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isForbidden());
 
             assertNoJobCreated();
             assertThat(vodRepository.count()).isZero();

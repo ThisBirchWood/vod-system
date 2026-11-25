@@ -1,9 +1,9 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.Stream;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.repositories.StreamRepository;
-import com.ddf.vodsystem.services.StreamService;
+import com.ddf.vodsystem.stream.Stream;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.stream.StreamRepository;
+import com.ddf.vodsystem.stream.StreamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -358,7 +358,7 @@ class StreamingIT extends BaseIntegrationTest {
             startStream(owner);
 
             mockMvc.perform(get(HISTORY + owner.getId()).with(authenticatedAs(snooper)))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isForbidden());
         }
     }
 

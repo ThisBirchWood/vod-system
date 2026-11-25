@@ -1,11 +1,11 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.repositories.UserRepository;
-import com.ddf.vodsystem.security.GoogleVerifierService;
-import com.ddf.vodsystem.security.JwtService;
-import com.ddf.vodsystem.services.JobRegistryService;
-import com.ddf.vodsystem.services.media.ThumbnailService;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.user.UserRepository;
+import com.ddf.vodsystem.auth.GoogleVerifierService;
+import com.ddf.vodsystem.auth.JwtService;
+import com.ddf.vodsystem.job.JobRegistryService;
+import com.ddf.vodsystem.media.ThumbnailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;

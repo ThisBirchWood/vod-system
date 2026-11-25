@@ -1,6 +1,6 @@
 package com.ddf.vodsystem;
 
-import com.ddf.vodsystem.dto.properties.AuthProperties;
+import com.ddf.vodsystem.auth.AuthProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

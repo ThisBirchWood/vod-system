@@ -1,15 +1,15 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.Clip;
-import com.ddf.vodsystem.entities.Marker;
-import com.ddf.vodsystem.entities.Stream;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.entities.Vod;
-import com.ddf.vodsystem.repositories.ClipRepository;
-import com.ddf.vodsystem.repositories.MarkerRepository;
-import com.ddf.vodsystem.repositories.StreamRepository;
-import com.ddf.vodsystem.repositories.VodRepository;
-import com.ddf.vodsystem.services.DirectoryService;
+import com.ddf.vodsystem.clip.Clip;
+import com.ddf.vodsystem.marker.Marker;
+import com.ddf.vodsystem.stream.Stream;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.vod.Vod;
+import com.ddf.vodsystem.clip.ClipRepository;
+import com.ddf.vodsystem.marker.MarkerRepository;
+import com.ddf.vodsystem.stream.StreamRepository;
+import com.ddf.vodsystem.vod.VodRepository;
+import com.ddf.vodsystem.common.services.DirectoryService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

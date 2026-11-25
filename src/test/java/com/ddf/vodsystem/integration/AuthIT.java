@@ -3,10 +3,10 @@ package com.ddf.vodsystem.integration;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.ddf.vodsystem.controllers.dto.Token;
-import com.ddf.vodsystem.dto.GoogleUser;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.exceptions.NotAuthenticated;
+import com.ddf.vodsystem.token.Token;
+import com.ddf.vodsystem.auth.GoogleUser;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.auth.NotAuthenticatedException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -110,7 +110,7 @@ class AuthIT extends BaseIntegrationTest {
 
         @Test
         void rejectedGoogleTokenReturns401AndCreatesNothing() throws Exception {
-            when(googleVerifierService.verify(anyString())).thenThrow(new NotAuthenticated("rejected"));
+            when(googleVerifierService.verify(anyString())).thenThrow(new NotAuthenticatedException("rejected"));
 
             mockMvc.perform(loginRequest("forged-token"))
                     .andExpect(status().isUnauthorized())

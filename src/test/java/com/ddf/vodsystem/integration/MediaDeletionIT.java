@@ -1,8 +1,8 @@
 package com.ddf.vodsystem.integration;
 
-import com.ddf.vodsystem.entities.Clip;
-import com.ddf.vodsystem.entities.User;
-import com.ddf.vodsystem.entities.Vod;
+import com.ddf.vodsystem.clip.Clip;
+import com.ddf.vodsystem.user.User;
+import com.ddf.vodsystem.vod.Vod;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
