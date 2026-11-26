@@ -88,6 +88,13 @@ function timeRangeLabel(date: Date, now: Date = new Date()): string {
     return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
+// Today's local date as "YYYY-MM-DD - ", for prefilling titles so they sort
+// chronologically and the user only has to type the rest.
+function datePrefix(date: Date = new Date()): string {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `;
+}
+
 type TimeGroup<T> = { label: string, items: T[] };
 
 // Expects items already sorted newest first; groups keep that order.
@@ -103,5 +110,5 @@ function groupByTimeRange<T>(items: T[], getDateString: (item: T) => string): Ti
     return groups;
 }
 
-export { formatTime, formatDuration, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime, timeRangeLabel, groupByTimeRange };
+export { formatTime, formatDuration, stringToDate, dateToTimeAgo, formatLocalDate, formatLocalTime, timeRangeLabel, groupByTimeRange, datePrefix };
 export type { TimeGroup };

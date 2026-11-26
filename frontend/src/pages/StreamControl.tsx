@@ -13,7 +13,7 @@ import useJobTracker from "../hooks/useJobTracker.ts";
 import { getMarkers, createMarker, deleteMarker } from "../utils/api/markers.ts";
 import { saveSectionByMarkers, clipSection } from "../utils/api/media.ts";
 import type { Marker } from "../utils/types.ts";
-import { formatLocalDate, stringToDate } from "../utils/utils.ts";
+import { datePrefix, formatLocalDate, stringToDate } from "../utils/utils.ts";
 
 const inputClass = "border border-hairline bg-fields rounded-md w-full p-2 text-sm focus:outline-none focus:ring-2 focus:ring-muted transition-colors";
 const labelClass = "font-data text-[11px] text-muted uppercase tracking-[0.12em]";
@@ -32,7 +32,7 @@ const StreamControl = () => {
 
     const [startMarkerId, setStartMarkerId] = useState<string>("");
     const [endMarkerId, setEndMarkerId] = useState<string>("");
-    const [markerSaveTitle, setMarkerSaveTitle] = useState("");
+    const [markerSaveTitle, setMarkerSaveTitle] = useState(() => datePrefix());
     const [markerSaveDescription, setMarkerSaveDescription] = useState("");
     const [markerSaveError, setMarkerSaveError] = useState<string | null>(null);
 
@@ -95,7 +95,7 @@ const StreamControl = () => {
             addJob(uuid, "Save (by markers)");
             setStartMarkerId("");
             setEndMarkerId("");
-            setMarkerSaveTitle("");
+            setMarkerSaveTitle(datePrefix());
             setMarkerSaveDescription("");
         } catch (err) {
             setMarkerSaveError(err instanceof Error ? err.message : "Failed to save section");
