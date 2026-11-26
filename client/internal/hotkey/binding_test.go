@@ -78,9 +78,9 @@ func TestDisplayAndPortalTrigger(t *testing.T) {
 	tests := []struct {
 		in, display, portal string
 	}{
-		{"alt+f10", "Alt+F10", "ALT+F10"},
+		{"alt+f10", altName + "+F10", "ALT+F10"},
 		{"ctrl+shift+m", "Ctrl+Shift+M", "CTRL+SHIFT+m"},
-		{"alt+space", "Alt+Space", "ALT+Space"},
+		{"alt+space", altName + "+Space", "ALT+Space"},
 		{"ctrl+return", "Ctrl+Return", "CTRL+Return"},
 		{"super+1", superName + "+1", "LOGO+1"},
 	}
@@ -104,5 +104,25 @@ func TestModifierDisplay(t *testing.T) {
 	}
 	if got := Modifier(0).Display(); got != "" {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestCheckPlatform(t *testing.T) {
+	refused := []Binding{{Alt, "f10"}, {Alt | Shift, "c"}}
+	allowed := []Binding{{Ctrl | Alt, "f10"}, {Super | Alt, "c"}, {Shift, "f1"}, {Ctrl, "f10"}}
+	for _, b := range refused {
+		if err := CheckPlatform("darwin", b); err != ErrOptionOnly {
+			t.Errorf("darwin should refuse %s, got %v", b, err)
+		}
+		for _, goos := range []string{"linux", "windows"} {
+			if err := CheckPlatform(goos, b); err != nil {
+				t.Errorf("%s allows %s, got %v", goos, b, err)
+			}
+		}
+	}
+	for _, b := range allowed {
+		if err := CheckPlatform("darwin", b); err != nil {
+			t.Errorf("darwin allows %s, got %v", b, err)
+		}
 	}
 }

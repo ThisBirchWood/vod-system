@@ -117,6 +117,12 @@ func (h *HotkeyEntry) KeyDown(e *fyne.KeyEvent) {
 		h.button.SetText("Use a modifier like Alt or Ctrl, plus a key")
 		return
 	}
+	if err := hotkey.Validate(b); err != nil {
+		// macOS refuses Option-only combinations; keep listening.
+		h.held = 0
+		h.button.SetText("macOS needs Ctrl or Cmd in a hotkey")
+		return
+	}
 	h.set(b.String())
 }
 

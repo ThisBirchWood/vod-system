@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -489,7 +490,9 @@ func TestHotkeyPressActs(t *testing.T) {
 	h.c.Start()
 	h.waitFor("hotkeys bound", func(s Status) bool { return len(s.Hotkeys) == 3 })
 	s := h.c.Status()
-	if s.Hotkeys[ActionClip] != "Alt+F10" || s.Hotkeys[ActionSection] != "Alt+F9" || s.Hotkeys[ActionMarker] != "Alt+F11" {
+	defaults := config.Default().Hotkeys
+	if s.Hotkeys[ActionClip] != display(t, defaults.Clip) || s.Hotkeys[ActionSection] != display(t, defaults.Section) ||
+		s.Hotkeys[ActionMarker] != display(t, defaults.Marker) {
 		t.Errorf("hotkeys = %v", s.Hotkeys)
 	}
 
@@ -676,3 +679,30 @@ func TestNoStreamKey(t *testing.T) {
 }
 
 var _ = api.ErrNotAuthenticated
+
+// display is how a hotkey shows on this platform, e.g. "Alt+F10", or "Ctrl+Option+F10" on macOS.
+func display(t *testing.T, combo string) string {
+	t.Helper()
+	b, err := hotkey.Parse(combo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b.Display()
+}
+
+func TestOptionOnlyHotkeyOnMacOS(t *testing.T) {
+	h := newHarness(t, true, func(_ *harness, cfg *config.Config) { cfg.Hotkeys.Clip = "alt+f10" })
+	h.c.Start()
+	if runtime.GOOS != "darwin" {
+		h.waitFor("all hotkeys bound", func(s Status) bool { return len(s.Hotkeys) == 3 })
+		return
+	}
+	// macOS refuses Option-only hotkeys: say which one and how to fix it, and bind the rest.
+	s := h.waitFor("hotkey problem", func(s Status) bool { return s.HotkeyProblem != "" })
+	if !strings.Contains(s.HotkeyProblem, "Save a clip") || !strings.Contains(s.HotkeyProblem, "Ctrl or Cmd") {
+		t.Errorf("problem = %q", s.HotkeyProblem)
+	}
+	if _, ok := s.Hotkeys[ActionClip]; ok || len(s.Hotkeys) != 2 {
+		t.Errorf("hotkeys = %v; the refused one must not be shown as working", s.Hotkeys)
+	}
+}

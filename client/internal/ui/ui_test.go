@@ -457,7 +457,7 @@ func TestSettingsApply(t *testing.T) {
 	if cfg.ClipSeconds != 120 || cfg.StartOnLogin || cfg.OBS.CloseOnExit || cfg.Hotkeys.Clip != "ctrl+shift+c" {
 		t.Errorf("applied config = %+v", cfg)
 	}
-	if cfg.Hotkeys.Section != "alt+f9" {
+	if cfg.Hotkeys.Section != config.Default().Hotkeys.Section {
 		t.Error("untouched hotkeys must be kept")
 	}
 }
@@ -503,10 +503,10 @@ func TestSettingsDialogSaves(t *testing.T) {
 
 func TestHotkeyEntryRecords(t *testing.T) {
 	test.NewTempApp(t)
-	h := NewHotkeyEntry("alt+f10")
+	h := NewHotkeyEntry("ctrl+f10")
 	w := test.NewWindow(h)
 	defer w.Close()
-	if h.button.Text != "Alt+F10" {
+	if h.button.Text != "Ctrl+F10" {
 		t.Errorf("label = %q", h.button.Text)
 	}
 
@@ -544,9 +544,9 @@ func TestHotkeyEntryNeedsModifier(t *testing.T) {
 	if !strings.Contains(h.button.Text, "modifier") {
 		t.Errorf("should explain why: %q", h.button.Text)
 	}
-	h.KeyDown(&fyne.KeyEvent{Name: desktop.KeyAltRight})
+	h.KeyDown(&fyne.KeyEvent{Name: desktop.KeyControlRight})
 	h.KeyDown(&fyne.KeyEvent{Name: fyne.KeyF8})
-	if h.Combo() != "alt+f8" {
+	if h.Combo() != "ctrl+f8" {
 		t.Errorf("combo = %q", h.Combo())
 	}
 }

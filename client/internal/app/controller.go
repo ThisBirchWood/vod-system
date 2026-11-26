@@ -731,6 +731,10 @@ func (c *Controller) bindHotkeys(ctx context.Context, keys config.Hotkeys) {
 			problems = append(problems, err.Error())
 			continue
 		}
+		if err := hotkey.Validate(b); err != nil {
+			problems = append(problems, fmt.Sprintf("%s (%s): %v", a.Description, b.Display(), err))
+			continue
+		}
 		shortcuts = append(shortcuts, hotkey.Shortcut{ID: a.ID, Description: a.Description, Binding: b})
 	}
 

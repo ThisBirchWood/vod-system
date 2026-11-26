@@ -2,4 +2,7 @@
 
 package hotkey
 
-const superName = "Super"
+const (
+	superName = "Super"
+	altName   = "Alt"
+)

@@ -1,3 +1,6 @@
 package hotkey
 
-const superName = "Cmd"
+const (
+	superName = "Cmd"
+	altName   = "Option"
+)

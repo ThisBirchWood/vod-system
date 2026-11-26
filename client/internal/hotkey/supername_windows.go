@@ -1,3 +1,6 @@
 package hotkey
 
-const superName = "Win"
+const (
+	superName = "Win"
+	altName   = "Alt"
+)

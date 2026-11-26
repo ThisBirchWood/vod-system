@@ -175,3 +175,35 @@ func TestSaveRoundTrip(t *testing.T) {
 		t.Errorf("round trip mismatch:\n got %+v\nwant %+v", got, cfg)
 	}
 }
+
+func TestDefaultHotkeys(t *testing.T) {
+	if got := DefaultHotkeys("windows"); got != (Hotkeys{Clip: "alt+f10", Section: "alt+f9", Marker: "alt+f11"}) {
+		t.Errorf("windows = %+v", got)
+	}
+	if got := DefaultHotkeys("linux"); got.Clip != "alt+f10" {
+		t.Errorf("linux = %+v", got)
+	}
+	// macOS refuses Option-only hotkeys.
+	if got := DefaultHotkeys("darwin"); got != (Hotkeys{Clip: "ctrl+alt+f10", Section: "ctrl+alt+f9", Marker: "ctrl+alt+f11"}) {
+		t.Errorf("darwin = %+v", got)
+	}
+}
+
+func TestMigrateHotkeys(t *testing.T) {
+	old := Hotkeys{Clip: "alt+f10", Section: "shift+alt+f9", Marker: "cmd+f11"}
+	got := MigrateHotkeys("darwin", old)
+	want := Hotkeys{Clip: "ctrl+alt+f10", Section: "ctrl+shift+alt+f9"}
+	if got.Clip != want.Clip || got.Section != want.Section {
+		t.Errorf("darwin migration = %+v, want %+v", got, want)
+	}
+	if got.Marker != "cmd+f11" {
+		t.Errorf("valid hotkeys must be left exactly as saved, got %q", got.Marker)
+	}
+	if MigrateHotkeys("linux", old) != old {
+		t.Error("other platforms allow Option-only hotkeys")
+	}
+	empty := Hotkeys{Clip: "", Section: "garbage", Marker: "alt+f11"}
+	if got := MigrateHotkeys("darwin", empty); got.Clip != "" || got.Section != "garbage" {
+		t.Errorf("disabled or unparsable hotkeys are left alone, got %+v", got)
+	}
+}

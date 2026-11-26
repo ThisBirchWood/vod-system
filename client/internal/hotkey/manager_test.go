@@ -43,7 +43,7 @@ func TestGrabManagerBindAndPress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bound["clip"] != "Alt+F10" || bound["mark"] != "Alt+F11" {
+	if bound["clip"] != altName+"+F10" || bound["mark"] != altName+"+F11" {
 		t.Errorf("bound = %v", bound)
 	}
 	if !g.AppManaged() {
@@ -68,7 +68,7 @@ func TestGrabManagerPartialFailure(t *testing.T) {
 		{ID: "clip", Description: "Save a clip", Binding: Binding{Alt, "f10"}},
 		{ID: "mark", Description: "Add a marker", Binding: Binding{Alt, "f12"}},
 	})
-	if err == nil || !strings.Contains(err.Error(), "Add a marker (Alt+F12)") {
+	if err == nil || !strings.Contains(err.Error(), "Add a marker ("+altName+"+F12)") {
 		t.Errorf("err = %v, want the failing shortcut named", err)
 	}
 	if _, ok := bound["clip"]; !ok {

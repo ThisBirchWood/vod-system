@@ -20,6 +20,10 @@ That's it. You're live, and these hotkeys work from any game or app:
 | `Alt+F9`  | Start a section; press again to save everything since as a video    |
 | `Alt+F11` | Add a marker                                                        |
 
+On a Mac the same hotkeys use **Ctrl+Option** (`⌃⌥F10`, `⌃⌥F9`, `⌃⌥F11`), because macOS 15
+refuses shortcuts whose only modifier is Option. On a laptop keyboard, also hold `fn` for the F
+keys. VoD Client doesn't need Accessibility or Input Monitoring permission.
+
 A notification confirms each one. Clip length, hotkeys and start-up behaviour are under
 **Settings**. Closing the window keeps VoD Client running in the tray, so the hotkeys keep
 working. VoD Client opens automatically when you sign in to your computer (you can turn this off
@@ -66,8 +70,11 @@ Building needs Go 1.24+ and cgo. For Linux, install
 `gcc-mingw-w64-x86-64`. Builds without `SERVER_URL` ask for a server on first launch, which is
 handy for development.
 
-macOS builds should work (`go build ./cmd/vod-client` on a Mac), but they are untested and not
-part of the release yet.
+macOS builds with `go build ./cmd/vod-client` on a Mac but isn't part of the release yet. Its
+hotkeys use Carbon's `RegisterEventHotKey` (`internal/hotkey/register_darwin.go`), which only
+receives the registered combinations and so needs no Accessibility or Input Monitoring
+permission. Option-only combinations are rejected on every path (defaults, saved settings, the
+hotkey recorder), since macOS 15 refuses to register them.
 
 ### How it works
 

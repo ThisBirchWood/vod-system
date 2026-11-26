@@ -11,7 +11,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"gitea.defaoite.dev/dylan/vod-system/client/internal/hotkey"
 )
 
 // Set at build time so users never have to type a server address:
@@ -69,11 +72,7 @@ func Default() Config {
 		ServerURL:    DefaultServerURL,
 		ClipSeconds:  30,
 		StartOnLogin: true,
-		Hotkeys: Hotkeys{
-			Clip:    "alt+f10",
-			Section: "alt+f9",
-			Marker:  "alt+f11",
-		},
+		Hotkeys:      DefaultHotkeys(runtime.GOOS),
 		OBS: OBS{
 			WebsocketPort:     4455,
 			WebsocketPassword: randomHex(16),
@@ -176,7 +175,35 @@ func (s Store) Load() (Config, error) {
 	if cfg.ServerURL == "" {
 		cfg.ServerURL = DefaultServerURL
 	}
+	if migrated := MigrateHotkeys(runtime.GOOS, cfg.Hotkeys); migrated != cfg.Hotkeys {
+		cfg.Hotkeys = migrated
+		return cfg, s.Save(cfg)
+	}
 	return cfg, nil
+}
+
+// DefaultHotkeys are ShadowPlay's Alt+F9/F10 layout, plus F11 for markers. macOS refuses
+// Option-only hotkeys, so there they use Ctrl+Option.
+func DefaultHotkeys(goos string) Hotkeys {
+	mod := "alt+"
+	if goos == "darwin" {
+		mod = "ctrl+alt+"
+	}
+	return Hotkeys{Clip: mod + "f10", Section: mod + "f9", Marker: mod + "f11"}
+}
+
+// MigrateHotkeys adds Ctrl to hotkeys the platform would refuse, such as Option-only ones saved
+// by an older version on macOS, so they keep working instead of silently failing.
+func MigrateHotkeys(goos string, h Hotkeys) Hotkeys {
+	fix := func(combo string) string {
+		b, err := hotkey.Parse(combo)
+		if err != nil || hotkey.CheckPlatform(goos, b) == nil {
+			return combo
+		}
+		b.Mods |= hotkey.Ctrl
+		return b.String()
+	}
+	return Hotkeys{Clip: fix(h.Clip), Section: fix(h.Section), Marker: fix(h.Marker)}
 }
 
 // Save writes cfg. It holds the websocket password, so it is only readable by the user.

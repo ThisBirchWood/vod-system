@@ -117,7 +117,7 @@ func (m Modifier) Display() string {
 	for _, mod := range []struct {
 		mod  Modifier
 		name string
-	}{{Ctrl, "Ctrl"}, {Shift, "Shift"}, {Alt, "Alt"}, {Super, superName}} {
+	}{{Ctrl, "Ctrl"}, {Shift, "Shift"}, {Alt, altName}, {Super, superName}} {
 		if m&mod.mod != 0 {
 			parts = append(parts, mod.name)
 		}
